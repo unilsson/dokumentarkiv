@@ -3,6 +3,17 @@ import { config, ensureDataDirectories } from "./config.js";
 
 let database: DatabaseSync | undefined;
 
+const defaultCategories = [
+  "Hus",
+  "Försäkringar",
+  "Kvitton",
+  "Avtal",
+  "Fordon",
+  "Förening",
+  "Manualer",
+  "Övrigt",
+];
+
 export function getDatabase(): DatabaseSync {
   if (database) {
     return database;
@@ -58,9 +69,17 @@ export function getDatabase(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_documents_category_id
       ON documents(category_id);
 
-    CREATE INDEX IF NOT EXISTS idx_documents_sha256
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_sha256_unique
       ON documents(sha256);
   `);
+
+  const insertCategory = database.prepare(
+    "INSERT OR IGNORE INTO categories (name) VALUES (?)",
+  );
+
+  for (const category of defaultCategories) {
+    insertCategory.run(category);
+  }
 
   return database;
 }

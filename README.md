@@ -36,18 +36,41 @@ data/
 
 I en framtida container motsvarar detta en persistent volym monterad som `/data`.
 
-## Sprint 1
+## Funktioner
 
-Första sprinten innehåller:
+Sprint 1 lade grunden med React/Vite/TypeScript, Express/TypeScript, SQLite, `DATA_DIR`, `GET /api/health` och strikt separerad runtime-data.
 
-- React + Vite + TypeScript frontend
-- Express + TypeScript backend
-- `GET /api/health`
-- SQLite-databas
-- grundschema för dokument, kategorier och taggar
-- central `DATA_DIR`
-- separerad dokument-, thumbnail- och temp-lagring
-- Git-skydd för privat och lokal data
+Sprint 2 lägger till dokumentuppladdning:
+
+- PDF, JPG, PNG och Markdown (.md)
+- max 25 MB per fil
+- titel, dokumentdatum, kategori och anteckning
+- standardkategorier som skapas automatiskt
+- staging under `DATA_DIR/tmp`
+- kontroll av faktisk filsignatur för PDF/bilder och giltig UTF-8 för Markdown
+- SHA-256 för varje dokument
+- skydd mot identiska dubbletter
+- säkert internt filnamn
+- slutlig lagring under `DATA_DIR/documents`
+- metadata i SQLite
+
+## API
+
+```text
+GET  /api/health
+GET  /api/categories
+POST /api/documents
+```
+
+`POST /api/documents` använder `multipart/form-data` med fälten:
+
+```text
+file
+title
+documentDate
+categoryId
+description
+```
 
 ## Krav
 
@@ -140,13 +163,6 @@ Det gör backupprincipen enkel:
 
 > Backup av Dokumentarkiv = backup av datavolymen.
 
-## Nästa sprint
+## Nästa steg
 
-Sprint 2 fokuserar på dokumentuppladdning:
-
-- PDF, JPG och PNG
-- metadata
-- SHA-256
-- lagring under `DATA_DIR/documents`
-- registrering i SQLite
-- skydd mot dubbla filer
+Efter uppladdnings-MVP:n är nästa naturliga steg arkivvyn: lista dokument, filtrera på kategori och öppna dokumentdetaljer.
