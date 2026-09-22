@@ -54,11 +54,22 @@ Sprint 2 lägger till dokumentuppladdning:
 - slutlig lagring under `DATA_DIR/documents`
 - metadata i SQLite
 
+Sprint 3 lägger till arkivvyn:
+
+- startsida med lista över arkiverade dokument
+- textsökning i titel, anteckning och originalfilnamn
+- filtrering på kategori
+- sortering med nyaste dokument först
+- klickbar detaljvy med metadata, kategori och SHA-256
+- uppladdningsvyn finns kvar som separat vy
+
 ## API
 
 ```text
 GET  /api/health
 GET  /api/categories
+GET  /api/documents
+GET  /api/documents/:id
 POST /api/documents
 ```
 
@@ -165,4 +176,4 @@ Det gör backupprincipen enkel:
 
 ## Nästa steg
 
-Efter uppladdnings-MVP:n är nästa naturliga steg arkivvyn: lista dokument, filtrera på kategori och öppna dokumentdetaljer.
+Nästa naturliga steg är att kunna öppna eller hämta själva originalfilen från dokumentdetaljen och därefter lägga till förhandsvisning för PDF, bilder och Markdown.
