@@ -72,6 +72,14 @@ Sprint 4 lägger till dokumentvisning:
 - ladda ner originalfilen med originalfilnamnet
 - filendpoints använder `private, no-store`
 
+Sprint 5 lägger till metadatahantering:
+
+- redigera titel, dokumentdatum, kategori och anteckning
+- metadataändringar uppdaterar `updated_at`
+- kontrollerad borttagning med extra bekräftelsesteg
+- borttagning tar bort både databasrad och originalfil
+- filen flyttas till temporär lagring innan databasraden tas bort så att den kan återställas om databasoperationen misslyckas
+
 ## API
 
 ```text
@@ -82,6 +90,8 @@ GET  /api/documents/:id
 GET  /api/documents/:id/content
 GET  /api/documents/:id/download
 POST /api/documents
+PATCH /api/documents/:id
+DELETE /api/documents/:id
 ```
 
 `POST /api/documents` använder `multipart/form-data` med fälten:
@@ -187,4 +197,4 @@ Det gör backupprincipen enkel:
 
 ## Nästa steg
 
-Nästa naturliga steg är metadatahantering: redigera titel, datum, kategori och anteckning samt kunna ta bort ett dokument på ett kontrollerat sätt.
+Nästa naturliga steg är taggar och förbättrad organisering, alternativt OCR/textindexering för skannade PDF- och bilddokument.
