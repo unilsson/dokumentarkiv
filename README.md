@@ -42,12 +42,12 @@ Sprint 1 lade grunden med React/Vite/TypeScript, Express/TypeScript, SQLite, `DA
 
 Sprint 2 lägger till dokumentuppladdning:
 
-- PDF, JPG och PNG
+- PDF, JPG, PNG och Markdown (.md)
 - max 25 MB per fil
 - titel, dokumentdatum, kategori och anteckning
 - standardkategorier som skapas automatiskt
 - staging under `DATA_DIR/tmp`
-- kontroll av faktisk filsignatur
+- kontroll av faktisk filsignatur för PDF/bilder och giltig UTF-8 för Markdown
 - SHA-256 för varje dokument
 - skydd mot identiska dubbletter
 - säkert internt filnamn
