@@ -65,7 +65,7 @@ function fileTypeLabel(mimeType: string): string {
     case "image/png":
       return "PNG";
     case "text/markdown":
-      return "Markdown";
+      return "MD";
     default:
       return mimeType;
   }
