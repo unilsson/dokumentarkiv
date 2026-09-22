@@ -157,7 +157,7 @@ h2 {
 
 .filterBar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.35fr);
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.3fr) minmax(180px, 0.3fr);
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -1134,5 +1134,51 @@ button.summaryCard:hover {
 
   .homeHero h1 {
     font-size: 2.8rem;
+  }
+}
+
+
+/* Sprint 7 tags */
+.fieldHint {
+  color: #7a857e;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.tagChip {
+  padding: 0.38rem 0.62rem;
+  border: 1px solid #c9d7cc;
+  border-radius: 999px;
+  background: #edf4ef;
+  color: #2c5a3b;
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.tagChip:hover {
+  background: #e3eee6;
+}
+
+.tagNavCount {
+  margin-left: auto;
+  color: #8a948e;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.categoryNavItem.active .tagNavCount {
+  color: #4e7059;
+}
+
+@media (max-width: 820px) {
+  .filterBar {
+    grid-template-columns: 1fr;
   }
 }

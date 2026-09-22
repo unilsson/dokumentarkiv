@@ -54,7 +54,7 @@ export const documentUpload = multer({
   limits: {
     fileSize: MAX_UPLOAD_BYTES,
     files: 1,
-    fields: 4,
+    fields: 5,
   },
   fileFilter: (_req, file, callback) => {
     const mimeType = normalizeMimeType(file.mimetype, file.originalname);

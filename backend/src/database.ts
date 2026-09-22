@@ -71,6 +71,12 @@ export function getDatabase(): DatabaseSync {
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_sha256_unique
       ON documents(sha256);
+
+    CREATE INDEX IF NOT EXISTS idx_document_tags_tag_id
+      ON document_tags(tag_id);
+
+    CREATE INDEX IF NOT EXISTS idx_tags_name_nocase
+      ON tags(name COLLATE NOCASE);
   `);
 
   const insertCategory = database.prepare(

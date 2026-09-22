@@ -91,11 +91,24 @@ Sprint 6 bygger om appskalet:
 - kategoriklick öppnar arkivet filtrerat på vald kategori
 - systemstatus visas i appskalet
 
+Sprint 7 lägger till taggar:
+
+- flera fria taggar per dokument
+- taggar kan anges vid uppladdning
+- taggar kan redigeras tillsammans med övrig metadata
+- taggar visas på dokumentdetaljen
+- textsökningen söker även i taggnamn
+- arkivet kan filtreras på tagg
+- taggar visas i vänstermenyn med antal dokument
+- oanvända taggar städas bort automatiskt
+- högst 20 taggar per dokument och högst 50 tecken per tagg
+
 ## API
 
 ```text
 GET  /api/health
 GET  /api/categories
+GET  /api/tags
 GET  /api/documents
 GET  /api/documents/:id
 GET  /api/documents/:id/content
@@ -112,6 +125,7 @@ file
 title
 documentDate
 categoryId
+tags
 description
 ```
 
@@ -208,4 +222,4 @@ Det gör backupprincipen enkel:
 
 ## Nästa steg
 
-Efter det nya appskalet är nästa naturliga steg att välja mellan taggar/bättre organisering och OCR/textindexering för skannade PDF- och bilddokument.
+Nästa naturliga större steg är OCR och fulltextsökning för skannade PDF- och bilddokument.
