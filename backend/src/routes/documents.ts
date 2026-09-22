@@ -30,6 +30,7 @@ type DocumentRecord = {
   description: string | null;
   sha256: string;
   created_at: string;
+  updated_at: string;
   category_id: number | null;
   category_name: string | null;
 };
@@ -51,6 +52,26 @@ function isValidDate(value: string): boolean {
     date.getUTCMonth() === month - 1 &&
     date.getUTCDate() === day
   );
+}
+
+function documentJson(document: DocumentRecord) {
+  return {
+    id: document.id,
+    title: document.title,
+    originalFilename: document.original_filename,
+    mimeType: document.mime_type,
+    documentDate: document.document_date,
+    description: document.description,
+    sha256: document.sha256,
+    createdAt: document.created_at,
+    updatedAt: document.updated_at,
+    category: document.category_id
+      ? {
+          id: document.category_id,
+          name: document.category_name,
+        }
+      : null,
+  };
 }
 
 async function safeUnlink(filePath: string | undefined): Promise<void> {
@@ -75,6 +96,96 @@ async function safeUnlink(filePath: string | undefined): Promise<void> {
 function safeOriginalFilename(filename: string): string {
   return filename.replace(/^.*[\\/]/, "").slice(0, 255) || "document";
 }
+
+const documentSelect = `
+  SELECT
+    d.id,
+    d.title,
+    d.original_filename,
+    d.stored_filename,
+    d.mime_type,
+    d.document_date,
+    d.description,
+    d.sha256,
+    d.created_at,
+    d.updated_at,
+    c.id AS category_id,
+    c.name AS category_name
+  FROM documents d
+  LEFT JOIN categories c ON c.id = d.category_id
+`;
+
+documentsRouter.get("/", (req, res) => {
+  const query = textField(req.query.q);
+  const categoryIdText = textField(req.query.categoryId);
+  const conditions: string[] = [];
+  const parameters: Array<string | number> = [];
+
+  if (query) {
+    const search = `%${query}%`;
+    conditions.push(
+      "(d.title LIKE ? COLLATE NOCASE OR d.description LIKE ? COLLATE NOCASE OR d.original_filename LIKE ? COLLATE NOCASE)",
+    );
+    parameters.push(search, search, search);
+  }
+
+  if (categoryIdText) {
+    const categoryId = Number(categoryIdText);
+
+    if (!Number.isInteger(categoryId) || categoryId <= 0) {
+      res.status(400).json({
+        error: "invalid_category",
+        message: "Ogiltigt kategorifilter.",
+      });
+      return;
+    }
+
+    conditions.push("d.category_id = ?");
+    parameters.push(categoryId);
+  }
+
+  const where =
+    conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+
+  const documents = getDatabase()
+    .prepare(
+      `${documentSelect}
+       ${where}
+       ORDER BY COALESCE(d.document_date, d.created_at) DESC, d.created_at DESC`,
+    )
+    .all(...parameters) as DocumentRecord[];
+
+  res.json({
+    documents: documents.map(documentJson),
+    count: documents.length,
+  });
+});
+
+documentsRouter.get("/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({
+      error: "invalid_document_id",
+      message: "Ogiltigt dokument-id.",
+    });
+    return;
+  }
+
+  const document = getDatabase()
+    .prepare(`${documentSelect} WHERE d.id = ?`)
+    .get(id) as DocumentRecord | undefined;
+
+  if (!document) {
+    res.status(404).json({
+      error: "document_not_found",
+      message: "Dokumentet finns inte.",
+    });
+    return;
+  }
+
+  res.json({ document: documentJson(document) });
+});
 
 documentsRouter.post(
   "/",
@@ -217,46 +328,12 @@ documentsRouter.post(
         const id = Number(result.lastInsertRowid);
 
         const document = getDatabase()
-          .prepare(
-            `SELECT
-              d.id,
-              d.title,
-              d.original_filename,
-              d.stored_filename,
-              d.mime_type,
-              d.document_date,
-              d.description,
-              d.sha256,
-              d.created_at,
-              c.id AS category_id,
-              c.name AS category_name
-            FROM documents d
-            LEFT JOIN categories c ON c.id = d.category_id
-            WHERE d.id = ?`,
-          )
+          .prepare(`${documentSelect} WHERE d.id = ?`)
           .get(id) as DocumentRecord;
 
         storedPath = undefined;
 
-        res.status(201).json({
-          document: {
-            id: document.id,
-            title: document.title,
-            originalFilename: document.original_filename,
-            storedFilename: document.stored_filename,
-            mimeType: document.mime_type,
-            documentDate: document.document_date,
-            description: document.description,
-            sha256: document.sha256,
-            createdAt: document.created_at,
-            category: document.category_id
-              ? {
-                  id: document.category_id,
-                  name: document.category_name,
-                }
-              : null,
-          },
-        });
+        res.status(201).json({ document: documentJson(document) });
       } catch (error) {
         await safeUnlink(storedPath);
         storedPath = undefined;
