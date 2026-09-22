@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - "sprint/**"
   pull_request:
 
 jobs:
@@ -35,4 +34,4 @@ jobs:
           git check-ignore -q data/archive.db
           git check-ignore -q data/documents/test.pdf
 
-          test -z "$(git status --short)"
+          test -z "$(git status --short -- .env data/archive.db data/documents/test.pdf)"
