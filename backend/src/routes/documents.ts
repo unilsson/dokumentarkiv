@@ -4,6 +4,7 @@ import { rename, unlink } from "node:fs/promises";
 import { Router } from "express";
 import { config } from "../config.js";
 import { getDatabase } from "../database.js";
+import { enqueueOcr } from "../ocr.js";
 import {
   documentUpload,
   extensionForMimeType,
@@ -256,6 +257,7 @@ documentsRouter.get("/", (req, res) => {
         d.title LIKE ? COLLATE NOCASE
         OR d.description LIKE ? COLLATE NOCASE
         OR d.original_filename LIKE ? COLLATE NOCASE
+        OR d.ocr_text LIKE ? COLLATE NOCASE
         OR EXISTS (
           SELECT 1
           FROM document_tags dt
@@ -265,7 +267,7 @@ documentsRouter.get("/", (req, res) => {
         )
       )`,
     );
-    parameters.push(search, search, search, search);
+    parameters.push(search, search, search, search, search);
   }
 
   if (categoryIdText) {
@@ -860,6 +862,7 @@ documentsRouter.post(
           .get(id) as DocumentRecord;
 
         storedPath = undefined;
+        enqueueOcr(id);
 
         res.status(201).json({ document: documentJson(document) });
       } catch (error) {
