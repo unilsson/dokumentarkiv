@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { open } from "node:fs/promises";
+import { open, readFile } from "node:fs/promises";
+import path from "node:path";
 import multer from "multer";
 import { config, ensureDataDirectories } from "./config.js";
 
@@ -10,13 +11,33 @@ const allowedMimeTypes = new Set([
   "application/pdf",
   "image/jpeg",
   "image/png",
+  "text/markdown",
 ]);
 
 const extensionByMimeType: Record<string, string> = {
   "application/pdf": ".pdf",
   "image/jpeg": ".jpg",
   "image/png": ".png",
+  "text/markdown": ".md",
 };
+
+function isMarkdownFilename(filename: string): boolean {
+  return path.extname(filename).toLowerCase() === ".md";
+}
+
+export function normalizeMimeType(
+  mimeType: string,
+  originalFilename: string,
+): string {
+  if (
+    isMarkdownFilename(originalFilename) &&
+    (mimeType === "text/markdown" || mimeType === "text/plain")
+  ) {
+    return "text/markdown";
+  }
+
+  return mimeType;
+}
 
 const storage = multer.diskStorage({
   destination: (_req, _file, callback) => {
@@ -36,8 +57,12 @@ export const documentUpload = multer({
     fields: 4,
   },
   fileFilter: (_req, file, callback) => {
-    if (!allowedMimeTypes.has(file.mimetype)) {
-      callback(new Error("Filtypen stöds inte. Använd PDF, JPG eller PNG."));
+    const mimeType = normalizeMimeType(file.mimetype, file.originalname);
+
+    if (!allowedMimeTypes.has(mimeType)) {
+      callback(
+        new Error("Filtypen stöds inte. Använd PDF, JPG, PNG eller Markdown."),
+      );
       return;
     }
 
@@ -59,6 +84,21 @@ export async function hasValidFileSignature(
   filePath: string,
   mimeType: string,
 ): Promise<boolean> {
+  if (mimeType === "text/markdown") {
+    try {
+      const content = await readFile(filePath);
+
+      if (content.includes(0)) {
+        return false;
+      }
+
+      new TextDecoder("utf-8", { fatal: true }).decode(content);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   const handle = await open(filePath, "r");
 
   try {
