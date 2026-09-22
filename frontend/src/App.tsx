@@ -829,7 +829,7 @@ export default function App() {
                 <input
                   type="search"
                   value={search}
-                  placeholder="Titel, anteckning, filnamn eller tagg"
+                  placeholder="Titel, anteckning, filnamn, tagg eller dokumentinnehåll"
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </label>
