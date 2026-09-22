@@ -42,6 +42,10 @@ export function getDatabase(): DatabaseSync {
       category_id INTEGER,
       description TEXT,
       sha256 TEXT NOT NULL,
+      ocr_text TEXT,
+      ocr_status TEXT NOT NULL DEFAULT 'pending',
+      ocr_error TEXT,
+      ocr_updated_at TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (category_id) REFERENCES categories(id)
@@ -78,6 +82,36 @@ export function getDatabase(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_tags_name_nocase
       ON tags(name COLLATE NOCASE);
   `);
+
+  const documentColumns = database
+    .prepare("PRAGMA table_info(documents)")
+    .all() as Array<{ name: string }>;
+  const columnNames = new Set(documentColumns.map((column) => column.name));
+
+  if (!columnNames.has("ocr_text")) {
+    database.exec("ALTER TABLE documents ADD COLUMN ocr_text TEXT;");
+  }
+
+  if (!columnNames.has("ocr_status")) {
+    database.exec(
+      "ALTER TABLE documents ADD COLUMN ocr_status TEXT NOT NULL DEFAULT 'pending';",
+    );
+  }
+
+  if (!columnNames.has("ocr_error")) {
+    database.exec("ALTER TABLE documents ADD COLUMN ocr_error TEXT;");
+  }
+
+  if (!columnNames.has("ocr_updated_at")) {
+    database.exec("ALTER TABLE documents ADD COLUMN ocr_updated_at TEXT;");
+  }
+
+  database.exec(
+    `UPDATE documents
+     SET ocr_status = 'skipped'
+     WHERE mime_type NOT IN ('application/pdf', 'image/jpeg', 'image/png')
+       AND ocr_status <> 'skipped'`,
+  );
 
   const insertCategory = database.prepare(
     "INSERT OR IGNORE INTO categories (name) VALUES (?)",
