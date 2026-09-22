@@ -71,6 +71,93 @@ function fileTypeLabel(mimeType: string): string {
   }
 }
 
+function MarkdownPreview({ documentId }: { documentId: number }) {
+  const [content, setContent] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`/api/documents/${documentId}/content`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Markdown-filen kunde inte hämtas.");
+        }
+
+        return response.text();
+      })
+      .then((text) => {
+        if (!cancelled) {
+          setContent(text);
+        }
+      })
+      .catch((previewError: unknown) => {
+        if (!cancelled) {
+          setError(
+            previewError instanceof Error
+              ? previewError.message
+              : "Markdown-filen kunde inte hämtas.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId]);
+
+  if (loading) {
+    return <p className="previewMessage">Laddar Markdown…</p>;
+  }
+
+  if (error) {
+    return <p className="previewMessage previewError">{error}</p>;
+  }
+
+  return <pre className="markdownPreview">{content}</pre>;
+}
+
+function DocumentPreview({ document }: { document: DocumentItem }) {
+  const contentUrl = `/api/documents/${document.id}/content`;
+
+  if (document.mimeType === "application/pdf") {
+    return (
+      <iframe
+        className="pdfPreview"
+        src={contentUrl}
+        title={`Förhandsvisning av ${document.title}`}
+      />
+    );
+  }
+
+  if (
+    document.mimeType === "image/jpeg" ||
+    document.mimeType === "image/png"
+  ) {
+    return (
+      <div className="imagePreview">
+        <img src={contentUrl} alt={document.title} />
+      </div>
+    );
+  }
+
+  if (document.mimeType === "text/markdown") {
+    return <MarkdownPreview documentId={document.id} />;
+  }
+
+  return (
+    <p className="previewMessage">
+      Förhandsvisning stöds inte för den här filtypen.
+    </p>
+  );
+}
+
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -414,6 +501,23 @@ export default function App() {
                   </span>
                 </div>
 
+                <div className="documentActions">
+                  <a
+                    className="secondaryLinkButton"
+                    href={`/api/documents/${selectedDocument.id}/content`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Öppna original
+                  </a>
+                  <a
+                    className="primaryLinkButton"
+                    href={`/api/documents/${selectedDocument.id}/download`}
+                  >
+                    Ladda ner original
+                  </a>
+                </div>
+
                 <dl className="detailGrid">
                   <div>
                     <dt>Dokumentdatum</dt>
@@ -442,6 +546,14 @@ export default function App() {
                     </dd>
                   </div>
                 </dl>
+
+                <section className="previewSection">
+                  <div className="previewHeading">
+                    <h3>Förhandsvisning</h3>
+                    <span>{fileTypeLabel(selectedDocument.mimeType)}</span>
+                  </div>
+                  <DocumentPreview document={selectedDocument} />
+                </section>
               </section>
             )}
           </section>

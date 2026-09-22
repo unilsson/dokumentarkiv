@@ -20,6 +20,13 @@ type ExistingDocument = {
   original_filename: string;
 };
 
+type DocumentFileRecord = {
+  id: number;
+  original_filename: string;
+  stored_filename: string;
+  mime_type: string;
+};
+
 type DocumentRecord = {
   id: number;
   title: string;
@@ -97,6 +104,34 @@ function safeOriginalFilename(filename: string): string {
   return filename.replace(/^.*[\\/]/, "").slice(0, 255) || "document";
 }
 
+function documentId(value: string): number | null {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function getDocumentFile(id: number): DocumentFileRecord | undefined {
+  return getDatabase()
+    .prepare(
+      "SELECT id, original_filename, stored_filename, mime_type FROM documents WHERE id = ?",
+    )
+    .get(id) as DocumentFileRecord | undefined;
+}
+
+function storedDocumentPath(storedFilename: string): string | null {
+  if (path.basename(storedFilename) !== storedFilename) {
+    return null;
+  }
+
+  const documentsRoot = path.resolve(config.documentsDir);
+  const filePath = path.resolve(documentsRoot, storedFilename);
+
+  if (!filePath.startsWith(documentsRoot + path.sep)) {
+    return null;
+  }
+
+  return filePath;
+}
+
 const documentSelect = `
   SELECT
     d.id,
@@ -161,10 +196,129 @@ documentsRouter.get("/", (req, res) => {
   });
 });
 
-documentsRouter.get("/:id", (req, res) => {
-  const id = Number(req.params.id);
+documentsRouter.get("/:id/content", (req, res) => {
+  const id = documentId(req.params.id);
 
-  if (!Number.isInteger(id) || id <= 0) {
+  if (!id) {
+    res.status(400).json({
+      error: "invalid_document_id",
+      message: "Ogiltigt dokument-id.",
+    });
+    return;
+  }
+
+  const document = getDocumentFile(id);
+
+  if (!document) {
+    res.status(404).json({
+      error: "document_not_found",
+      message: "Dokumentet finns inte.",
+    });
+    return;
+  }
+
+  const filePath = storedDocumentPath(document.stored_filename);
+
+  if (!filePath) {
+    res.status(500).json({
+      error: "invalid_stored_filename",
+      message: "Dokumentets lagrade filnamn är ogiltigt.",
+    });
+    return;
+  }
+
+  res.setHeader("Content-Type", document.mime_type);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename*=UTF-8''${encodeURIComponent(document.original_filename)}`,
+  );
+
+  res.sendFile(filePath, (error) => {
+    if (!error || res.headersSent) {
+      return;
+    }
+
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "statusCode" in error &&
+      Number(error.statusCode) === 404
+        ? 404
+        : 500;
+
+    res.status(status).json({
+      error: status === 404 ? "document_file_not_found" : "file_delivery_error",
+      message:
+        status === 404
+          ? "Dokumentfilen saknas på disken."
+          : "Dokumentfilen kunde inte öppnas.",
+    });
+  });
+});
+
+documentsRouter.get("/:id/download", (req, res) => {
+  const id = documentId(req.params.id);
+
+  if (!id) {
+    res.status(400).json({
+      error: "invalid_document_id",
+      message: "Ogiltigt dokument-id.",
+    });
+    return;
+  }
+
+  const document = getDocumentFile(id);
+
+  if (!document) {
+    res.status(404).json({
+      error: "document_not_found",
+      message: "Dokumentet finns inte.",
+    });
+    return;
+  }
+
+  const filePath = storedDocumentPath(document.stored_filename);
+
+  if (!filePath) {
+    res.status(500).json({
+      error: "invalid_stored_filename",
+      message: "Dokumentets lagrade filnamn är ogiltigt.",
+    });
+    return;
+  }
+
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+
+  res.download(filePath, document.original_filename, (error) => {
+    if (!error || res.headersSent) {
+      return;
+    }
+
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "statusCode" in error &&
+      Number(error.statusCode) === 404
+        ? 404
+        : 500;
+
+    res.status(status).json({
+      error: status === 404 ? "document_file_not_found" : "file_delivery_error",
+      message:
+        status === 404
+          ? "Dokumentfilen saknas på disken."
+          : "Dokumentfilen kunde inte hämtas.",
+    });
+  });
+});
+
+documentsRouter.get("/:id", (req, res) => {
+  const id = documentId(req.params.id);
+
+  if (!id) {
     res.status(400).json({
       error: "invalid_document_id",
       message: "Ogiltigt dokument-id.",

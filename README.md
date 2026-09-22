@@ -63,6 +63,15 @@ Sprint 3 lägger till arkivvyn:
 - klickbar detaljvy med metadata, kategori och SHA-256
 - uppladdningsvyn finns kvar som separat vy
 
+Sprint 4 lägger till dokumentvisning:
+
+- inline-visning av PDF i webbläsaren
+- inline-visning av JPG och PNG
+- säker textvisning av Markdown utan HTML-exekvering
+- öppna originalfilen i ny flik
+- ladda ner originalfilen med originalfilnamnet
+- filendpoints använder `private, no-store`
+
 ## API
 
 ```text
@@ -70,6 +79,8 @@ GET  /api/health
 GET  /api/categories
 GET  /api/documents
 GET  /api/documents/:id
+GET  /api/documents/:id/content
+GET  /api/documents/:id/download
 POST /api/documents
 ```
 
@@ -176,4 +187,4 @@ Det gör backupprincipen enkel:
 
 ## Nästa steg
 
-Nästa naturliga steg är att kunna öppna eller hämta själva originalfilen från dokumentdetaljen och därefter lägga till förhandsvisning för PDF, bilder och Markdown.
+Nästa naturliga steg är metadatahantering: redigera titel, datum, kategori och anteckning samt kunna ta bort ett dokument på ett kontrollerat sätt.

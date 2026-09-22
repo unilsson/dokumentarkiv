@@ -57,7 +57,8 @@ button {
 }
 
 h1,
-h2 {
+h2,
+h3 {
   margin: 0;
   letter-spacing: -0.035em;
 }
@@ -364,6 +365,137 @@ h2 {
   color: #516058;
 }
 
+.documentActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.15rem;
+}
+
+.primaryLinkButton,
+.secondaryLinkButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0.72rem 0.95rem;
+  border-radius: 11px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.primaryLinkButton {
+  background: #203c2c;
+  color: #fff;
+}
+
+.primaryLinkButton:hover {
+  background: #172f22;
+}
+
+.secondaryLinkButton {
+  border: 1px solid #cad4cc;
+  background: #fff;
+  color: #315e43;
+}
+
+.secondaryLinkButton:hover {
+  background: #f5f8f5;
+}
+
+.previewSection {
+  margin-top: 1.7rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e6eae7;
+}
+
+.previewHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.previewHeading h3 {
+  font-size: 1.15rem;
+}
+
+.previewHeading span {
+  color: #738078;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.pdfPreview {
+  display: block;
+  width: 100%;
+  height: min(72vh, 820px);
+  min-height: 520px;
+  border: 1px solid #dbe2dc;
+  border-radius: 14px;
+  background: #f4f6f4;
+}
+
+.imagePreview {
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+  padding: 1rem;
+  border: 1px solid #dbe2dc;
+  border-radius: 14px;
+  background:
+    linear-gradient(45deg, #f3f5f3 25%, transparent 25%),
+    linear-gradient(-45deg, #f3f5f3 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f3f5f3 75%),
+    linear-gradient(-45deg, transparent 75%, #f3f5f3 75%);
+  background-size: 24px 24px;
+  background-position:
+    0 0,
+    0 12px,
+    12px -12px,
+    -12px 0;
+}
+
+.imagePreview img {
+  display: block;
+  max-width: 100%;
+  max-height: 72vh;
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(31, 45, 37, 0.12);
+}
+
+.markdownPreview {
+  margin: 0;
+  max-height: 72vh;
+  overflow: auto;
+  padding: 1.25rem;
+  border: 1px solid #dbe2dc;
+  border-radius: 14px;
+  background: #f7f9f7;
+  color: #25342b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.previewMessage {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid #dbe2dc;
+  border-radius: 12px;
+  background: #f7f9f7;
+  color: #667269;
+}
+
+.previewError {
+  border-color: #e6c3c3;
+  background: #fff1f1;
+  color: #7b2d2d;
+}
+
 .uploadForm {
   padding: clamp(1.25rem, 4vw, 2.5rem);
 }
@@ -553,8 +685,18 @@ h2 {
     grid-column: auto;
   }
 
-  .primaryButton {
+  .primaryButton,
+  .primaryLinkButton,
+  .secondaryLinkButton {
     width: 100%;
+  }
+
+  .documentActions {
+    display: grid;
+  }
+
+  .pdfPreview {
+    min-height: 440px;
   }
 
   .documentRow {
