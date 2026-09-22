@@ -103,6 +103,37 @@ Sprint 7 lägger till taggar:
 - oanvända taggar städas bort automatiskt
 - högst 20 taggar per dokument och högst 50 tecken per tagg
 
+Sprint 8 lägger till OCR och innehållssökning:
+
+- PDF, JPG och PNG behandlas i bakgrunden
+- PDF med redan inbäddad text använder `pdftotext` utan onödig OCR
+- inskannade PDF-sidor rasteriseras med `pdftoppm` och OCR:as med Tesseract
+- JPG och PNG OCR:as direkt med Tesseract
+- OCR-jobb körs ett dokument i taget
+- befintliga dokument utan OCR köas när backend startar
+- OCR-texten lagras endast internt i SQLite och exponeras inte i dokument-API:t
+- ingen OCR-knapp eller OCR-vy finns i GUI:t
+- den vanliga sökrutan söker även i OCR-/dokumenttexten
+- OCR-fel lagras internt och försöks igen vid nästa backendstart
+
+### OCR-systemkrav
+
+OCR använder systemverktyg och lägger inte till någon JavaScript-OCR-motor. På Debian/Ubuntu behövs:
+
+```bash
+sudo apt install tesseract-ocr tesseract-ocr-swe tesseract-ocr-eng poppler-utils
+```
+
+Kontrollera installationen med:
+
+```bash
+tesseract --version
+pdftotext -v
+pdftoppm -v
+```
+
+Standardinställningen använder svenska och engelska (`swe+eng`) och behandlar högst 30 PDF-sidor per dokument. Detta kan ändras med OCR-miljövariablerna i `.env.example`.
+
 ## API
 
 ```text
@@ -177,6 +208,9 @@ Standardvärden under lokal utveckling:
 ```text
 PORT=3001
 DATA_DIR=../data
+OCR_ENABLED=true
+OCR_LANGUAGES=swe+eng
+OCR_MAX_PDF_PAGES=30
 ```
 
 För Docker är den tänkta modellen:
@@ -222,4 +256,4 @@ Det gör backupprincipen enkel:
 
 ## Nästa steg
 
-Nästa naturliga större steg är OCR och fulltextsökning för skannade PDF- och bilddokument.
+Efter OCR-sprinten är ett naturligt nästa steg Docker-paketering med Tesseract/Poppler inkluderat, så samma OCR-miljö kan köras reproducerbart i hemmalabbet.
