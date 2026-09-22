@@ -154,12 +154,12 @@ export default function App() {
                 {file ? file.name : "Välj ett dokument"}
               </span>
               <span className="fileDropHint">
-                PDF, JPG eller PNG · max 25 MB
+                PDF, JPG, PNG eller Markdown · max 25 MB
               </span>
               <input
                 key={fileInputKey}
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                accept=".pdf,.jpg,.jpeg,.png,.md,application/pdf,image/jpeg,image/png,text/markdown,text/plain"
                 onChange={(event) => {
                   const selectedFile = event.target.files?.[0] ?? null;
                   setFile(selectedFile);
