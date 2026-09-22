@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+coverage/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Persistent application data
+/data/*
+!/data/.gitkeep
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Local Docker overrides
+docker-compose.override.yml
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*~
+*.swp
+*.swo
