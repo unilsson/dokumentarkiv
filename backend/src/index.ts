@@ -2,12 +2,14 @@ import express from "express";
 import multer from "multer";
 import { config } from "./config.js";
 import { getDatabase } from "./database.js";
+import { startOcrWorker } from "./ocr.js";
 import { categoriesRouter } from "./routes/categories.js";
 import { documentsRouter } from "./routes/documents.js";
 import { tagsRouter } from "./routes/tags.js";
 import { MAX_UPLOAD_BYTES } from "./upload.js";
 
 getDatabase();
+startOcrWorker();
 
 const app = express();
 
