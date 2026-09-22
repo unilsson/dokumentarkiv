@@ -341,6 +341,199 @@ documentsRouter.get("/:id", (req, res) => {
   res.json({ document: documentJson(document) });
 });
 
+documentsRouter.patch("/:id", (req, res) => {
+  const id = documentId(req.params.id);
+
+  if (!id) {
+    res.status(400).json({
+      error: "invalid_document_id",
+      message: "Ogiltigt dokument-id.",
+    });
+    return;
+  }
+
+  const existing = getDatabase()
+    .prepare("SELECT id FROM documents WHERE id = ?")
+    .get(id);
+
+  if (!existing) {
+    res.status(404).json({
+      error: "document_not_found",
+      message: "Dokumentet finns inte.",
+    });
+    return;
+  }
+
+  const title = textField(req.body.title);
+  const documentDate = textField(req.body.documentDate);
+  const description = textField(req.body.description);
+  const categoryValue = req.body.categoryId;
+
+  if (!title || title.length > 200) {
+    res.status(400).json({
+      error: "invalid_title",
+      message: "Titel måste anges och får vara högst 200 tecken.",
+    });
+    return;
+  }
+
+  if (documentDate && !isValidDate(documentDate)) {
+    res.status(400).json({
+      error: "invalid_document_date",
+      message: "Dokumentdatum måste vara ett giltigt datum.",
+    });
+    return;
+  }
+
+  if (description.length > 4000) {
+    res.status(400).json({
+      error: "description_too_long",
+      message: "Beskrivningen får vara högst 4000 tecken.",
+    });
+    return;
+  }
+
+  let categoryId: number | null = null;
+
+  if (categoryValue !== null && categoryValue !== undefined && categoryValue !== "") {
+    categoryId =
+      typeof categoryValue === "number"
+        ? categoryValue
+        : Number(String(categoryValue));
+
+    if (!Number.isInteger(categoryId) || categoryId <= 0) {
+      res.status(400).json({
+        error: "invalid_category",
+        message: "Ogiltig kategori.",
+      });
+      return;
+    }
+
+    const category = getDatabase()
+      .prepare("SELECT id FROM categories WHERE id = ?")
+      .get(categoryId);
+
+    if (!category) {
+      res.status(400).json({
+        error: "invalid_category",
+        message: "Den valda kategorin finns inte.",
+      });
+      return;
+    }
+  }
+
+  getDatabase()
+    .prepare(
+      `UPDATE documents
+       SET title = ?,
+           document_date = ?,
+           category_id = ?,
+           description = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+    )
+    .run(
+      title,
+      documentDate || null,
+      categoryId,
+      description || null,
+      id,
+    );
+
+  const document = getDatabase()
+    .prepare(`${documentSelect} WHERE d.id = ?`)
+    .get(id) as DocumentRecord;
+
+  res.json({ document: documentJson(document) });
+});
+
+documentsRouter.delete("/:id", async (req, res) => {
+  const id = documentId(req.params.id);
+
+  if (!id) {
+    res.status(400).json({
+      error: "invalid_document_id",
+      message: "Ogiltigt dokument-id.",
+    });
+    return;
+  }
+
+  const document = getDocumentFile(id);
+
+  if (!document) {
+    res.status(404).json({
+      error: "document_not_found",
+      message: "Dokumentet finns inte.",
+    });
+    return;
+  }
+
+  const filePath = storedDocumentPath(document.stored_filename);
+
+  if (!filePath) {
+    res.status(500).json({
+      error: "invalid_stored_filename",
+      message: "Dokumentets lagrade filnamn är ogiltigt.",
+    });
+    return;
+  }
+
+  const trashPath = path.join(
+    config.tempDir,
+    `${randomUUID()}-${path.basename(document.stored_filename)}.deleted`,
+  );
+  let movedToTrash = false;
+
+  try {
+    try {
+      await rename(filePath, trashPath);
+      movedToTrash = true;
+    } catch (error) {
+      const code =
+        typeof error === "object" && error !== null && "code" in error
+          ? String(error.code)
+          : "";
+
+      if (code !== "ENOENT") {
+        throw error;
+      }
+    }
+
+    try {
+      getDatabase()
+        .prepare("DELETE FROM documents WHERE id = ?")
+        .run(id);
+    } catch (error) {
+      if (movedToTrash) {
+        try {
+          await rename(trashPath, filePath);
+          movedToTrash = false;
+        } catch (restoreError) {
+          console.error("Could not restore document after delete failure", restoreError);
+        }
+      }
+
+      throw error;
+    }
+
+    if (movedToTrash) {
+      try {
+        await safeUnlink(trashPath);
+      } catch (cleanupError) {
+        console.error("Could not remove deleted document from tmp", cleanupError);
+      }
+    }
+
+    res.status(204).end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      error: "document_delete_failed",
+      message: "Dokumentet kunde inte tas bort.",
+    });
+  }
+});
+
 documentsRouter.post(
   "/",
   documentUpload.single("file"),
