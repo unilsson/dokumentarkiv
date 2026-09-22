@@ -8,6 +8,7 @@ import {
   documentUpload,
   extensionForMimeType,
   hasValidFileSignature,
+  normalizeMimeType,
   sha256File,
 } from "../upload.js";
 
@@ -84,7 +85,7 @@ documentsRouter.post(
     if (!file) {
       res.status(400).json({
         error: "missing_file",
-        message: "Välj en PDF-, JPG- eller PNG-fil att ladda upp.",
+        message: "Välj en PDF-, JPG-, PNG- eller Markdown-fil att ladda upp.",
       });
       return;
     }
@@ -148,7 +149,9 @@ documentsRouter.post(
         }
       }
 
-      if (!(await hasValidFileSignature(file.path, file.mimetype))) {
+      const mimeType = normalizeMimeType(file.mimetype, file.originalname);
+
+      if (!(await hasValidFileSignature(file.path, mimeType))) {
         res.status(400).json({
           error: "invalid_file_content",
           message: "Filens innehåll stämmer inte med filtypen.",
@@ -178,7 +181,7 @@ documentsRouter.post(
       }
 
       const storedFilename =
-        randomUUID() + extensionForMimeType(file.mimetype);
+        randomUUID() + extensionForMimeType(mimeType);
       storedPath = path.join(config.documentsDir, storedFilename);
 
       await rename(file.path, storedPath);
@@ -204,7 +207,7 @@ documentsRouter.post(
             title,
             originalFilename,
             storedFilename,
-            file.mimetype,
+            mimeType,
             documentDate || null,
             categoryId,
             description || null,
