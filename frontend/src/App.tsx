@@ -662,6 +662,29 @@ export default function App() {
           </div>
         </div>
 
+        {tags.length > 0 && (
+          <div className="sidebarSection">
+            <span className="sidebarSectionTitle">Taggar</span>
+            <div className="categoryNav">
+              {tags.map((tag) => (
+                <button
+                  type="button"
+                  key={tag.id}
+                  className={
+                    view === "archive" && archiveTagId === String(tag.id)
+                      ? "categoryNavItem active"
+                      : "categoryNavItem"
+                  }
+                  onClick={() => showTag(tag.id)}
+                >
+                  <span>{tag.name}</span>
+                  <small className="tagNavCount">{tag.documentCount ?? 0}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="sidebarStatus">
           <span className={health?.status === "ok" ? "dot ready" : "dot"} />
           <div>
@@ -782,11 +805,15 @@ export default function App() {
           <>
             <section className="sectionHeader">
               <div>
-                <h2>{activeCategory?.name ?? "Alla dokument"}</h2>
+                <h2>
+                  {activeTag?.name ?? activeCategory?.name ?? "Alla dokument"}
+                </h2>
                 <p>
-                  {activeCategory
-                    ? `Dokument i kategorin ${activeCategory.name}.`
-                    : "Sök, filtrera och öppna dokument i arkivet."}
+                  {activeTag
+                    ? `Dokument med taggen ${activeTag.name}.`
+                    : activeCategory
+                      ? `Dokument i kategorin ${activeCategory.name}.`
+                      : "Sök, filtrera och öppna dokument i arkivet."}
                 </p>
               </div>
               <span className="countBadge">
@@ -802,7 +829,7 @@ export default function App() {
                 <input
                   type="search"
                   value={search}
-                  placeholder="Titel, anteckning eller filnamn"
+                  placeholder="Titel, anteckning, filnamn eller tagg"
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </label>
@@ -811,14 +838,33 @@ export default function App() {
                 <span>Kategori</span>
                 <select
                   value={archiveCategoryId}
-                  onChange={(event) =>
-                    setArchiveCategoryId(event.target.value)
-                  }
+                  onChange={(event) => {
+                    setArchiveTagId("");
+                    setArchiveCategoryId(event.target.value);
+                  }}
                 >
                   <option value="">Alla kategorier</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="filterField">
+                <span>Tagg</span>
+                <select
+                  value={archiveTagId}
+                  onChange={(event) => {
+                    setArchiveCategoryId("");
+                    setArchiveTagId(event.target.value);
+                  }}
+                >
+                  <option value="">Alla taggar</option>
+                  {tags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>
+                      {tag.name}
                     </option>
                   ))}
                 </select>
@@ -996,6 +1042,19 @@ export default function App() {
                       </label>
 
                       <label className="field fieldWide">
+                        <span>Taggar</span>
+                        <input
+                          type="text"
+                          value={editTags}
+                          placeholder="Till exempel: volvo, försäkring, 2026"
+                          onChange={(event) => setEditTags(event.target.value)}
+                        />
+                        <small className="fieldHint">
+                          Separera flera taggar med kommatecken.
+                        </small>
+                      </label>
+
+                      <label className="field fieldWide">
                         <span>Anteckning</span>
                         <textarea
                           value={editDescription}
@@ -1074,6 +1133,27 @@ export default function App() {
                   <div>
                     <dt>Arkiverad</dt>
                     <dd>{formatCreatedAt(selectedDocument.createdAt)}</dd>
+                  </div>
+                  <div className="detailWide">
+                    <dt>Taggar</dt>
+                    <dd>
+                      {selectedDocument.tags.length > 0 ? (
+                        <div className="tagList">
+                          {selectedDocument.tags.map((tag) => (
+                            <button
+                              type="button"
+                              className="tagChip"
+                              key={tag.id}
+                              onClick={() => showTag(tag.id)}
+                            >
+                              {tag.name}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        "Inga taggar."
+                      )}
+                    </dd>
                   </div>
                   <div className="detailWide">
                     <dt>SHA-256</dt>
@@ -1172,6 +1252,19 @@ export default function App() {
                         </option>
                       ))}
                     </select>
+                  </label>
+
+                  <label className="field fieldWide">
+                    <span>Taggar</span>
+                    <input
+                      type="text"
+                      value={uploadTags}
+                      placeholder="Till exempel: skatt, 2026, viktigt"
+                      onChange={(event) => setUploadTags(event.target.value)}
+                    />
+                    <small className="fieldHint">
+                      Separera flera taggar med kommatecken.
+                    </small>
                   </label>
 
                   <label className="field fieldWide">
