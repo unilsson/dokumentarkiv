@@ -11,6 +11,12 @@ type Category = {
   name: string;
 };
 
+type Tag = {
+  id: number;
+  name: string;
+  documentCount?: number;
+};
+
 type DocumentItem = {
   id: number;
   title: string;
@@ -22,6 +28,7 @@ type DocumentItem = {
   createdAt: string;
   updatedAt: string;
   category: Category | null;
+  tags: Tag[];
 };
 
 type ApiError = {
@@ -161,6 +168,7 @@ function DocumentPreview({ document }: { document: DocumentItem }) {
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [view, setView] = useState<View>("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [homeDocuments, setHomeDocuments] = useState<DocumentItem[]>([]);
@@ -171,6 +179,7 @@ export default function App() {
   const [archiveError, setArchiveError] = useState("");
   const [search, setSearch] = useState("");
   const [archiveCategoryId, setArchiveCategoryId] = useState("");
+  const [archiveTagId, setArchiveTagId] = useState("");
   const [selectedDocument, setSelectedDocument] =
     useState<DocumentItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -178,6 +187,7 @@ export default function App() {
   const [editTitle, setEditTitle] = useState("");
   const [editDocumentDate, setEditDocumentDate] = useState("");
   const [editCategoryId, setEditCategoryId] = useState("");
+  const [editTags, setEditTags] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [metadataSaving, setMetadataSaving] = useState(false);
   const [detailMessage, setDetailMessage] = useState("");
@@ -188,6 +198,7 @@ export default function App() {
   const [title, setTitle] = useState("");
   const [documentDate, setDocumentDate] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [uploadTags, setUploadTags] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -217,6 +228,8 @@ export default function App() {
       })
       .then((payload) => setCategories(payload.categories))
       .catch(() => setCategories([]));
+
+    void loadTags();
   }, []);
 
   useEffect(() => {
@@ -229,7 +242,22 @@ export default function App() {
     }, 200);
 
     return () => window.clearTimeout(timer);
-  }, [search, archiveCategoryId]);
+  }, [search, archiveCategoryId, archiveTagId]);
+
+  async function loadTags() {
+    try {
+      const response = await fetch("/api/tags");
+
+      if (!response.ok) {
+        throw new Error("Taggar kunde inte hämtas.");
+      }
+
+      const payload = (await response.json()) as { tags: Tag[] };
+      setTags(payload.tags);
+    } catch {
+      setTags([]);
+    }
+  }
 
   async function loadHomeDocuments() {
     setHomeLoading(true);
@@ -265,6 +293,10 @@ export default function App() {
 
     if (archiveCategoryId) {
       params.set("categoryId", archiveCategoryId);
+    }
+
+    if (archiveTagId) {
+      params.set("tagId", archiveTagId);
     }
 
     const query = params.toString();
@@ -338,6 +370,7 @@ export default function App() {
     setEditCategoryId(
       selectedDocument.category ? String(selectedDocument.category.id) : "",
     );
+    setEditTags(selectedDocument.tags.map((tag) => tag.name).join(", "));
     setEditDescription(selectedDocument.description ?? "");
     setDetailMessage("");
     setDeleteConfirming(false);
@@ -371,6 +404,7 @@ export default function App() {
             title: editTitle,
             documentDate: editDocumentDate || null,
             categoryId: editCategoryId ? Number(editCategoryId) : null,
+            tags: editTags,
             description: editDescription,
           }),
         },
@@ -393,6 +427,7 @@ export default function App() {
       setDetailMessage("Metadata sparades.");
       await loadDocuments();
       await loadHomeDocuments();
+      await loadTags();
     } catch (error) {
       setDetailMessage(
         error instanceof Error ? error.message : "Metadata kunde inte sparas.",
@@ -439,6 +474,7 @@ export default function App() {
       setView("archive");
       await loadDocuments();
       await loadHomeDocuments();
+      await loadTags();
     } catch (error) {
       setDetailMessage(
         error instanceof Error
@@ -453,6 +489,7 @@ export default function App() {
   function showHome() {
     setSearch("");
     setArchiveCategoryId("");
+    setArchiveTagId("");
     setView("home");
     setSidebarOpen(false);
     void loadHomeDocuments();
@@ -461,13 +498,23 @@ export default function App() {
   function showAllDocuments() {
     setSearch("");
     setArchiveCategoryId("");
+    setArchiveTagId("");
     setView("archive");
     setSidebarOpen(false);
   }
 
   function showCategory(categoryId: number) {
     setSearch("");
+    setArchiveTagId("");
     setArchiveCategoryId(String(categoryId));
+    setView("archive");
+    setSidebarOpen(false);
+  }
+
+  function showTag(tagId: number) {
+    setSearch("");
+    setArchiveCategoryId("");
+    setArchiveTagId(String(tagId));
     setView("archive");
     setSidebarOpen(false);
   }
@@ -492,6 +539,7 @@ export default function App() {
     formData.append("title", title);
     formData.append("documentDate", documentDate);
     formData.append("categoryId", categoryId);
+    formData.append("tags", uploadTags);
     formData.append("description", description);
 
     setSubmitting(true);
@@ -522,10 +570,12 @@ export default function App() {
       setTitle("");
       setDocumentDate("");
       setCategoryId("");
+      setUploadTags("");
       setDescription("");
       setFileInputKey((value) => value + 1);
       await loadDocuments();
       await loadHomeDocuments();
+      await loadTags();
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -540,6 +590,7 @@ export default function App() {
   const activeCategory = categories.find(
     (category) => String(category.id) === archiveCategoryId,
   );
+  const activeTag = tags.find((tag) => String(tag.id) === archiveTagId);
 
   return (
     <div className="appShell">
