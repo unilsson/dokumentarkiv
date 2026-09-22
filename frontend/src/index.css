@@ -373,7 +373,9 @@ h2 {
 }
 
 .primaryLinkButton,
-.secondaryLinkButton {
+.secondaryLinkButton,
+.secondaryActionButton,
+.dangerActionButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -393,14 +395,113 @@ h2 {
   background: #172f22;
 }
 
-.secondaryLinkButton {
+.secondaryLinkButton,
+.secondaryActionButton {
   border: 1px solid #cad4cc;
   background: #fff;
   color: #315e43;
 }
 
-.secondaryLinkButton:hover {
+.secondaryLinkButton:hover,
+.secondaryActionButton:hover:not(:disabled) {
   background: #f5f8f5;
+}
+
+.secondaryActionButton,
+.dangerActionButton {
+  min-height: 42px;
+  padding: 0.72rem 0.95rem;
+  border-radius: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.secondaryActionButton:disabled,
+.dangerActionButton:disabled,
+.dangerConfirmButton:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.dangerActionButton {
+  margin-left: auto;
+  border: 1px solid #e1bcbc;
+  background: #fff;
+  color: #8a3030;
+}
+
+.dangerActionButton:hover:not(:disabled) {
+  background: #fff4f4;
+}
+
+.detailNotice {
+  margin-top: 1rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid #d8dfda;
+  border-radius: 11px;
+  background: #f4f7f4;
+  color: #4b5c51;
+  font-size: 0.9rem;
+}
+
+.editPanel {
+  margin-top: 1.2rem;
+  padding: 1.2rem;
+  border: 1px solid #ced9d1;
+  border-radius: 14px;
+  background: #f8faf8;
+}
+
+.editPanelHeading p {
+  margin: 0.35rem 0 0;
+  color: #68756c;
+  font-size: 0.9rem;
+}
+
+.editActions,
+.deleteActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.deletePanel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 1.2rem;
+  padding: 1.05rem 1.15rem;
+  border: 1px solid #e2baba;
+  border-radius: 14px;
+  background: #fff4f4;
+  color: #682727;
+}
+
+.deletePanel p {
+  max-width: 62ch;
+  margin: 0.35rem 0 0;
+  line-height: 1.5;
+}
+
+.deleteActions {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.dangerConfirmButton {
+  min-height: 42px;
+  padding: 0.72rem 0.95rem;
+  border-radius: 11px;
+  background: #8b2f2f;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dangerConfirmButton:hover:not(:disabled) {
+  background: #722424;
 }
 
 .previewSection {
@@ -633,7 +734,8 @@ h2 {
   .appHeader,
   .sectionHeader,
   .detailHeading,
-  .formFooter {
+  .formFooter,
+  .deletePanel {
     align-items: stretch;
     flex-direction: column;
   }
@@ -687,12 +789,21 @@ h2 {
 
   .primaryButton,
   .primaryLinkButton,
-  .secondaryLinkButton {
+  .secondaryLinkButton,
+  .secondaryActionButton,
+  .dangerActionButton,
+  .dangerConfirmButton {
     width: 100%;
   }
 
-  .documentActions {
+  .documentActions,
+  .editActions,
+  .deleteActions {
     display: grid;
+  }
+
+  .dangerActionButton {
+    margin-left: 0;
   }
 
   .pdfPreview {
