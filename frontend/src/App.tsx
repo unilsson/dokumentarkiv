@@ -171,6 +171,15 @@ export default function App() {
   const [selectedDocument, setSelectedDocument] =
     useState<DocumentItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDocumentDate, setEditDocumentDate] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [metadataSaving, setMetadataSaving] = useState(false);
+  const [detailMessage, setDetailMessage] = useState("");
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
@@ -258,6 +267,9 @@ export default function App() {
   async function openDocument(id: number) {
     setDetailLoading(true);
     setSelectedDocument(null);
+    setIsEditing(false);
+    setDeleteConfirming(false);
+    setDetailMessage("");
     setView("detail");
 
     try {
@@ -284,6 +296,126 @@ export default function App() {
       setView("archive");
     } finally {
       setDetailLoading(false);
+    }
+  }
+
+  function startEditing() {
+    if (!selectedDocument) {
+      return;
+    }
+
+    setEditTitle(selectedDocument.title);
+    setEditDocumentDate(selectedDocument.documentDate ?? "");
+    setEditCategoryId(
+      selectedDocument.category ? String(selectedDocument.category.id) : "",
+    );
+    setEditDescription(selectedDocument.description ?? "");
+    setDetailMessage("");
+    setDeleteConfirming(false);
+    setIsEditing(true);
+  }
+
+  function cancelEditing() {
+    setIsEditing(false);
+    setDetailMessage("");
+  }
+
+  async function saveMetadata(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedDocument) {
+      return;
+    }
+
+    setMetadataSaving(true);
+    setDetailMessage("");
+
+    try {
+      const response = await fetch(
+        `/api/documents/${selectedDocument.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: editTitle,
+            documentDate: editDocumentDate || null,
+            categoryId: editCategoryId ? Number(editCategoryId) : null,
+            description: editDescription,
+          }),
+        },
+      );
+
+      const payload = (await response.json()) as
+        | { document: DocumentItem }
+        | ApiError;
+
+      if (!response.ok || !("document" in payload)) {
+        throw new Error(
+          "message" in payload && payload.message
+            ? payload.message
+            : "Metadata kunde inte sparas.",
+        );
+      }
+
+      setSelectedDocument(payload.document);
+      setIsEditing(false);
+      setDetailMessage("Metadata sparades.");
+      await loadDocuments();
+    } catch (error) {
+      setDetailMessage(
+        error instanceof Error ? error.message : "Metadata kunde inte sparas.",
+      );
+    } finally {
+      setMetadataSaving(false);
+    }
+  }
+
+  async function deleteDocument() {
+    if (!selectedDocument) {
+      return;
+    }
+
+    setDeleting(true);
+    setDetailMessage("");
+
+    try {
+      const response = await fetch(
+        `/api/documents/${selectedDocument.id}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!response.ok) {
+        let message = "Dokumentet kunde inte tas bort.";
+
+        try {
+          const payload = (await response.json()) as ApiError;
+          if (payload.message) {
+            message = payload.message;
+          }
+        } catch {
+          // Keep the generic message if the response has no JSON body.
+        }
+
+        throw new Error(message);
+      }
+
+      setSelectedDocument(null);
+      setDeleteConfirming(false);
+      setIsEditing(false);
+      setView("archive");
+      await loadDocuments();
+    } catch (error) {
+      setDetailMessage(
+        error instanceof Error
+          ? error.message
+          : "Dokumentet kunde inte tas bort.",
+      );
+    } finally {
+      setDeleting(false);
     }
   }
 
