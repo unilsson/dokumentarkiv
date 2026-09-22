@@ -80,6 +80,17 @@ Sprint 5 lägger till metadatahantering:
 - borttagning tar bort både databasrad och originalfil
 - filen flyttas till temporär lagring innan databasraden tas bort så att den kan återställas om databasoperationen misslyckas
 
+Sprint 6 bygger om appskalet:
+
+- vänsternavigation på desktop
+- infällbar meny på mindre skärmar
+- Hem-vy med snabb överblick och senaste dokument
+- Alla dokument som separat huvudval
+- Ladda upp som separat huvudval
+- kategorier direkt i vänstermenyn
+- kategoriklick öppnar arkivet filtrerat på vald kategori
+- systemstatus visas i appskalet
+
 ## API
 
 ```text
@@ -197,4 +208,4 @@ Det gör backupprincipen enkel:
 
 ## Nästa steg
 
-Nästa naturliga steg är taggar och förbättrad organisering, alternativt OCR/textindexering för skannade PDF- och bilddokument.
+Efter det nya appskalet är nästa naturliga steg att välja mellan taggar/bättre organisering och OCR/textindexering för skannade PDF- och bilddokument.

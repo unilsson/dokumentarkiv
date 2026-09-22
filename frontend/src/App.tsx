@@ -28,7 +28,7 @@ type ApiError = {
   message?: string;
 };
 
-type View = "archive" | "upload" | "detail";
+type View = "home" | "archive" | "upload" | "detail";
 
 function titleFromFilename(filename: string): string {
   return filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
@@ -161,7 +161,10 @@ function DocumentPreview({ document }: { document: DocumentItem }) {
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [view, setView] = useState<View>("archive");
+  const [view, setView] = useState<View>("home");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [homeDocuments, setHomeDocuments] = useState<DocumentItem[]>([]);
+  const [homeLoading, setHomeLoading] = useState(true);
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [archiveLoading, setArchiveLoading] = useState(true);
@@ -217,12 +220,38 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    void loadHomeDocuments();
+  }, []);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadDocuments();
     }, 200);
 
     return () => window.clearTimeout(timer);
   }, [search, archiveCategoryId]);
+
+  async function loadHomeDocuments() {
+    setHomeLoading(true);
+
+    try {
+      const response = await fetch("/api/documents");
+
+      if (!response.ok) {
+        throw new Error("Översikten kunde inte hämtas.");
+      }
+
+      const payload = (await response.json()) as {
+        documents: DocumentItem[];
+      };
+
+      setHomeDocuments(payload.documents);
+    } catch {
+      setHomeDocuments([]);
+    } finally {
+      setHomeLoading(false);
+    }
+  }
 
   async function loadDocuments() {
     setArchiveLoading(true);
@@ -363,6 +392,7 @@ export default function App() {
       setIsEditing(false);
       setDetailMessage("Metadata sparades.");
       await loadDocuments();
+      await loadHomeDocuments();
     } catch (error) {
       setDetailMessage(
         error instanceof Error ? error.message : "Metadata kunde inte sparas.",
@@ -408,6 +438,7 @@ export default function App() {
       setIsEditing(false);
       setView("archive");
       await loadDocuments();
+      await loadHomeDocuments();
     } catch (error) {
       setDetailMessage(
         error instanceof Error
@@ -417,6 +448,33 @@ export default function App() {
     } finally {
       setDeleting(false);
     }
+  }
+
+  function showHome() {
+    setSearch("");
+    setArchiveCategoryId("");
+    setView("home");
+    setSidebarOpen(false);
+    void loadHomeDocuments();
+  }
+
+  function showAllDocuments() {
+    setSearch("");
+    setArchiveCategoryId("");
+    setView("archive");
+    setSidebarOpen(false);
+  }
+
+  function showCategory(categoryId: number) {
+    setSearch("");
+    setArchiveCategoryId(String(categoryId));
+    setView("archive");
+    setSidebarOpen(false);
+  }
+
+  function showUpload() {
+    setView("upload");
+    setSidebarOpen(false);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -467,6 +525,7 @@ export default function App() {
       setDescription("");
       setFileInputKey((value) => value + 1);
       await loadDocuments();
+      await loadHomeDocuments();
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -478,46 +537,206 @@ export default function App() {
     }
   }
 
+  const activeCategory = categories.find(
+    (category) => String(category.id) === archiveCategoryId,
+  );
+
   return (
-    <main className="shell">
-      <div className="page">
-        <header className="appHeader">
+    <div className="appShell">
+      <button
+        type="button"
+        className={sidebarOpen ? "sidebarBackdrop visible" : "sidebarBackdrop"}
+        aria-label="Stäng meny"
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      <aside className={sidebarOpen ? "sidebar open" : "sidebar"}>
+        <div className="sidebarBrand">
+          <span className="brandMark">D</span>
           <div>
-            <p className="eyebrow">Dokumentarkiv</p>
-            <h1>Mitt arkiv</h1>
+            <strong>Dokumentarkiv</strong>
+            <span>Mitt digitala arkiv</span>
           </div>
+        </div>
 
-          <div className="headerActions">
-            <nav className="mainNav" aria-label="Huvudnavigation">
+        <nav className="sidebarNav" aria-label="Huvudnavigation">
+          <button
+            type="button"
+            className={view === "home" ? "sidebarItem active" : "sidebarItem"}
+            onClick={showHome}
+          >
+            <span className="sidebarIcon">⌂</span>
+            Hem
+          </button>
+          <button
+            type="button"
+            className={
+              view === "archive" && !archiveCategoryId
+                ? "sidebarItem active"
+                : "sidebarItem"
+            }
+            onClick={showAllDocuments}
+          >
+            <span className="sidebarIcon">▤</span>
+            Alla dokument
+          </button>
+          <button
+            type="button"
+            className={view === "upload" ? "sidebarItem active" : "sidebarItem"}
+            onClick={showUpload}
+          >
+            <span className="sidebarIcon">＋</span>
+            Ladda upp
+          </button>
+        </nav>
+
+        <div className="sidebarSection">
+          <span className="sidebarSectionTitle">Kategorier</span>
+          <div className="categoryNav">
+            {categories.map((category) => (
               <button
                 type="button"
-                className={view === "archive" ? "navButton active" : "navButton"}
-                onClick={() => setView("archive")}
+                key={category.id}
+                className={
+                  view === "archive" &&
+                  archiveCategoryId === String(category.id)
+                    ? "categoryNavItem active"
+                    : "categoryNavItem"
+                }
+                onClick={() => showCategory(category.id)}
               >
-                Arkiv
+                <span>{category.name}</span>
               </button>
-              <button
-                type="button"
-                className={view === "upload" ? "navButton active" : "navButton"}
-                onClick={() => setView("upload")}
-              >
-                Ladda upp
-              </button>
-            </nav>
-
-            <div className="status">
-              <span className={health?.status === "ok" ? "dot ready" : "dot"} />
-              {health?.status === "ok" ? "Redo" : "Offline"}
-            </div>
+            ))}
           </div>
+        </div>
+
+        <div className="sidebarStatus">
+          <span className={health?.status === "ok" ? "dot ready" : "dot"} />
+          <div>
+            <strong>{health?.status === "ok" ? "Systemet är redo" : "Offline"}</strong>
+            <span>Lokalt dokumentarkiv</span>
+          </div>
+        </div>
+      </aside>
+
+      <main className="contentShell">
+        <header className="mobileHeader">
+          <button
+            type="button"
+            className="menuButton"
+            aria-label="Öppna meny"
+            onClick={() => setSidebarOpen(true)}
+          >
+            ☰
+          </button>
+          <strong>Dokumentarkiv</strong>
+          <span className={health?.status === "ok" ? "dot ready" : "dot"} />
         </header>
+
+        <div className="page">
+          {view === "home" && (
+            <>
+              <section className="homeHero">
+                <p className="eyebrow">Dokumentarkiv</p>
+                <h1>Hem</h1>
+                <p>
+                  En snabb överblick över arkivet och de senast tillagda
+                  dokumenten.
+                </p>
+              </section>
+
+              <section className="summaryGrid">
+                <button
+                  type="button"
+                  className="summaryCard"
+                  onClick={showAllDocuments}
+                >
+                  <span>Dokument</span>
+                  <strong>{homeLoading ? "–" : homeDocuments.length}</strong>
+                  <small>Totalt i arkivet</small>
+                </button>
+                <div className="summaryCard">
+                  <span>Kategorier</span>
+                  <strong>{categories.length}</strong>
+                  <small>Tillgängliga kategorier</small>
+                </div>
+                <button
+                  type="button"
+                  className="summaryCard"
+                  onClick={showUpload}
+                >
+                  <span>Arkivera</span>
+                  <strong>＋</strong>
+                  <small>Ladda upp nytt dokument</small>
+                </button>
+              </section>
+
+              <section className="homeSection">
+                <div className="sectionHeader">
+                  <div>
+                    <h2>Senaste dokument</h2>
+                    <p>De senast arkiverade dokumenten.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="textButton"
+                    onClick={showAllDocuments}
+                  >
+                    Visa alla →
+                  </button>
+                </div>
+
+                <div className="archiveCard">
+                  {!homeLoading && homeDocuments.length === 0 ? (
+                    <div className="emptyState">
+                      <strong>Arkivet är tomt.</strong>
+                      <span>Ladda upp ditt första dokument för att komma igång.</span>
+                    </div>
+                  ) : (
+                    <div className="documentList">
+                      {homeDocuments.slice(0, 5).map((document) => (
+                        <button
+                          type="button"
+                          className="documentRow"
+                          key={document.id}
+                          onClick={() => void openDocument(document.id)}
+                        >
+                          <div className="fileType">
+                            {fileTypeLabel(document.mimeType)}
+                          </div>
+                          <div className="documentMain">
+                            <strong>{document.title}</strong>
+                            <span>{document.originalFilename}</span>
+                          </div>
+                          <div className="documentMeta">
+                            <span>
+                              {document.category?.name ?? "Ingen kategori"}
+                            </span>
+                            <span>{formatDate(document.documentDate)}</span>
+                          </div>
+                          <span className="rowArrow" aria-hidden="true">
+                            →
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            </>
+          )}
 
         {view === "archive" && (
           <>
             <section className="sectionHeader">
               <div>
-                <h2>Dokument</h2>
-                <p>Sök, filtrera och öppna dokument i arkivet.</p>
+                <h2>{activeCategory?.name ?? "Alla dokument"}</h2>
+                <p>
+                  {activeCategory
+                    ? `Dokument i kategorin ${activeCategory.name}.`
+                    : "Sök, filtrera och öppna dokument i arkivet."}
+                </p>
               </div>
               <span className="countBadge">
                 {archiveLoading
@@ -960,7 +1179,8 @@ export default function App() {
             )}
           </>
         )}
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 }
