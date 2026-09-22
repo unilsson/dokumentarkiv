@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-and-safety-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify private runtime data is ignored
+        run: |
+          mkdir -p data/documents
+          touch .env data/archive.db data/documents/test.pdf
+
+          git check-ignore -q .env
+          git check-ignore -q data/archive.db
+          git check-ignore -q data/documents/test.pdf
+
+          test -z "$(git status --short -- .env data/archive.db data/documents/test.pdf)"
