@@ -97,8 +97,15 @@ export default function App() {
         | { document: UploadedDocument }
         | ApiError;
 
-      if (!response.ok || !("document" in payload)) {
-        throw new Error(payload.message || "Dokumentet kunde inte sparas.");
+      if (!response.ok) {
+        const apiError = payload as ApiError;
+        throw new Error(
+          apiError.message || "Dokumentet kunde inte sparas.",
+        );
+      }
+
+      if (!("document" in payload)) {
+        throw new Error("Dokumentet kunde inte sparas.");
       }
 
       setUploadedDocument(payload.document);
