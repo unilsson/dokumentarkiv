@@ -27,6 +27,11 @@ type DocumentFileRecord = {
   mime_type: string;
 };
 
+type TagRecord = {
+  id: number;
+  name: string;
+};
+
 type DocumentRecord = {
   id: number;
   title: string;
@@ -61,6 +66,92 @@ function isValidDate(value: string): boolean {
   );
 }
 
+function tagsForDocument(documentId: number): TagRecord[] {
+  return getDatabase()
+    .prepare(
+      `SELECT t.id, t.name
+       FROM tags t
+       JOIN document_tags dt ON dt.tag_id = t.id
+       WHERE dt.document_id = ?
+       ORDER BY t.name COLLATE NOCASE`,
+    )
+    .all(documentId) as TagRecord[];
+}
+
+function parseTagNames(value: unknown): string[] | null {
+  let rawTags: string[];
+
+  if (value === undefined || value === null || value === "") {
+    rawTags = [];
+  } else if (Array.isArray(value)) {
+    if (!value.every((item) => typeof item === "string")) {
+      return null;
+    }
+    rawTags = value as string[];
+  } else if (typeof value === "string") {
+    rawTags = value.split(",");
+  } else {
+    return null;
+  }
+
+  const tags: string[] = [];
+  const seen = new Set<string>();
+
+  for (const rawTag of rawTags) {
+    const tag = rawTag.trim().replace(/\s+/g, " ");
+
+    if (!tag) {
+      continue;
+    }
+
+    if (tag.length > 50) {
+      return null;
+    }
+
+    const key = tag.toLocaleLowerCase("sv-SE");
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      tags.push(tag);
+    }
+  }
+
+  return tags.length <= 20 ? tags : null;
+}
+
+function replaceDocumentTags(documentId: number, tagNames: string[]): void {
+  const database = getDatabase();
+  const findTag = database.prepare(
+    "SELECT id, name FROM tags WHERE name = ? COLLATE NOCASE LIMIT 1",
+  );
+  const insertTag = database.prepare("INSERT INTO tags (name) VALUES (?)");
+  const linkTag = database.prepare(
+    "INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)",
+  );
+
+  database
+    .prepare("DELETE FROM document_tags WHERE document_id = ?")
+    .run(documentId);
+
+  for (const tagName of tagNames) {
+    let tag = findTag.get(tagName) as TagRecord | undefined;
+
+    if (!tag) {
+      const result = insertTag.run(tagName);
+      tag = { id: Number(result.lastInsertRowid), name: tagName };
+    }
+
+    linkTag.run(documentId, tag.id);
+  }
+
+  database.exec(
+    `DELETE FROM tags
+     WHERE NOT EXISTS (
+       SELECT 1 FROM document_tags dt WHERE dt.tag_id = tags.id
+     )`,
+  );
+}
+
 function documentJson(document: DocumentRecord) {
   return {
     id: document.id,
@@ -78,6 +169,7 @@ function documentJson(document: DocumentRecord) {
           name: document.category_name,
         }
       : null,
+    tags: tagsForDocument(document.id),
   };
 }
 
@@ -153,15 +245,27 @@ const documentSelect = `
 documentsRouter.get("/", (req, res) => {
   const query = textField(req.query.q);
   const categoryIdText = textField(req.query.categoryId);
+  const tagIdText = textField(req.query.tagId);
   const conditions: string[] = [];
   const parameters: Array<string | number> = [];
 
   if (query) {
     const search = `%${query}%`;
     conditions.push(
-      "(d.title LIKE ? COLLATE NOCASE OR d.description LIKE ? COLLATE NOCASE OR d.original_filename LIKE ? COLLATE NOCASE)",
+      `(
+        d.title LIKE ? COLLATE NOCASE
+        OR d.description LIKE ? COLLATE NOCASE
+        OR d.original_filename LIKE ? COLLATE NOCASE
+        OR EXISTS (
+          SELECT 1
+          FROM document_tags dt
+          JOIN tags t ON t.id = dt.tag_id
+          WHERE dt.document_id = d.id
+            AND t.name LIKE ? COLLATE NOCASE
+        )
+      )`,
     );
-    parameters.push(search, search, search);
+    parameters.push(search, search, search, search);
   }
 
   if (categoryIdText) {
@@ -177,6 +281,27 @@ documentsRouter.get("/", (req, res) => {
 
     conditions.push("d.category_id = ?");
     parameters.push(categoryId);
+  }
+
+  if (tagIdText) {
+    const tagId = Number(tagIdText);
+
+    if (!Number.isInteger(tagId) || tagId <= 0) {
+      res.status(400).json({
+        error: "invalid_tag",
+        message: "Ogiltigt taggfilter.",
+      });
+      return;
+    }
+
+    conditions.push(
+      `EXISTS (
+        SELECT 1
+        FROM document_tags dt
+        WHERE dt.document_id = d.id AND dt.tag_id = ?
+      )`,
+    );
+    parameters.push(tagId);
   }
 
   const where =
@@ -368,6 +493,15 @@ documentsRouter.patch("/:id", (req, res) => {
   const documentDate = textField(req.body.documentDate);
   const description = textField(req.body.description);
   const categoryValue = req.body.categoryId;
+  const tagNames = parseTagNames(req.body.tags);
+
+  if (tagNames === null) {
+    res.status(400).json({
+      error: "invalid_tags",
+      message: "Ange högst 20 taggar, högst 50 tecken per tagg.",
+    });
+    return;
+  }
 
   if (!title || title.length > 200) {
     res.status(400).json({
@@ -422,25 +556,36 @@ documentsRouter.patch("/:id", (req, res) => {
     }
   }
 
-  getDatabase()
-    .prepare(
-      `UPDATE documents
-       SET title = ?,
-           document_date = ?,
-           category_id = ?,
-           description = ?,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-    )
-    .run(
-      title,
-      documentDate || null,
-      categoryId,
-      description || null,
-      id,
-    );
+  const database = getDatabase();
+  database.exec("BEGIN IMMEDIATE;");
 
-  const document = getDatabase()
+  try {
+    database
+      .prepare(
+        `UPDATE documents
+         SET title = ?,
+             document_date = ?,
+             category_id = ?,
+             description = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+      )
+      .run(
+        title,
+        documentDate || null,
+        categoryId,
+        description || null,
+        id,
+      );
+
+    replaceDocumentTags(id, tagNames);
+    database.exec("COMMIT;");
+  } catch (error) {
+    database.exec("ROLLBACK;");
+    throw error;
+  }
+
+  const document = database
     .prepare(`${documentSelect} WHERE d.id = ?`)
     .get(id) as DocumentRecord;
 
@@ -500,9 +645,24 @@ documentsRouter.delete("/:id", async (req, res) => {
     }
 
     try {
-      getDatabase()
-        .prepare("DELETE FROM documents WHERE id = ?")
-        .run(id);
+      const database = getDatabase();
+      database.exec("BEGIN IMMEDIATE;");
+
+      try {
+        database
+          .prepare("DELETE FROM documents WHERE id = ?")
+          .run(id);
+        database.exec(
+          `DELETE FROM tags
+           WHERE NOT EXISTS (
+             SELECT 1 FROM document_tags dt WHERE dt.tag_id = tags.id
+           )`,
+        );
+        database.exec("COMMIT;");
+      } catch (error) {
+        database.exec("ROLLBACK;");
+        throw error;
+      }
     } catch (error) {
       if (movedToTrash) {
         try {
@@ -556,6 +716,15 @@ documentsRouter.post(
       const documentDate = textField(req.body.documentDate);
       const categoryIdText = textField(req.body.categoryId);
       const description = textField(req.body.description);
+      const tagNames = parseTagNames(req.body.tags);
+
+      if (tagNames === null) {
+        res.status(400).json({
+          error: "invalid_tags",
+          message: "Ange högst 20 taggar, högst 50 tecken per tagg.",
+        });
+        return;
+      }
 
       if (!title || title.length > 200) {
         res.status(400).json({
@@ -648,33 +817,45 @@ documentsRouter.post(
       const originalFilename = safeOriginalFilename(file.originalname);
 
       try {
-        const result = getDatabase()
-          .prepare(
-            `INSERT INTO documents (
+        const database = getDatabase();
+        database.exec("BEGIN IMMEDIATE;");
+
+        let id: number;
+
+        try {
+          const result = database
+            .prepare(
+              `INSERT INTO documents (
+                title,
+                original_filename,
+                stored_filename,
+                mime_type,
+                document_date,
+                category_id,
+                description,
+                sha256
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            )
+            .run(
               title,
-              original_filename,
-              stored_filename,
-              mime_type,
-              document_date,
-              category_id,
-              description,
-              sha256
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          )
-          .run(
-            title,
-            originalFilename,
-            storedFilename,
-            mimeType,
-            documentDate || null,
-            categoryId,
-            description || null,
-            sha256,
-          );
+              originalFilename,
+              storedFilename,
+              mimeType,
+              documentDate || null,
+              categoryId,
+              description || null,
+              sha256,
+            );
 
-        const id = Number(result.lastInsertRowid);
+          id = Number(result.lastInsertRowid);
+          replaceDocumentTags(id, tagNames);
+          database.exec("COMMIT;");
+        } catch (error) {
+          database.exec("ROLLBACK;");
+          throw error;
+        }
 
-        const document = getDatabase()
+        const document = database
           .prepare(`${documentSelect} WHERE d.id = ?`)
           .get(id) as DocumentRecord;
 
