@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { getDatabase } from "./database.js";
 import { categoriesRouter } from "./routes/categories.js";
 import { documentsRouter } from "./routes/documents.js";
+import { tagsRouter } from "./routes/tags.js";
 import { MAX_UPLOAD_BYTES } from "./upload.js";
 
 getDatabase();
@@ -21,6 +22,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/categories", categoriesRouter);
+app.use("/api/tags", tagsRouter);
 app.use("/api/documents", documentsRouter);
 
 app.use(
