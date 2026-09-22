@@ -44,7 +44,7 @@ function runCommand(
           return;
         }
 
-        resolve(typeof stdout === "string" ? stdout : stdout.toString("utf8"));
+        resolve(stdout);
       },
     );
   });
