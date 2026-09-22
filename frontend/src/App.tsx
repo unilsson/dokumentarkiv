@@ -648,7 +648,145 @@ export default function App() {
                   >
                     Ladda ner original
                   </a>
+                  <button
+                    type="button"
+                    className="secondaryActionButton"
+                    onClick={startEditing}
+                    disabled={metadataSaving || deleting}
+                  >
+                    Redigera metadata
+                  </button>
+                  <button
+                    type="button"
+                    className="dangerActionButton"
+                    onClick={() => {
+                      setDeleteConfirming(true);
+                      setIsEditing(false);
+                      setDetailMessage("");
+                    }}
+                    disabled={metadataSaving || deleting}
+                  >
+                    Ta bort
+                  </button>
                 </div>
+
+                {detailMessage && (
+                  <div className="detailNotice" role="status">
+                    {detailMessage}
+                  </div>
+                )}
+
+                {isEditing && (
+                  <form className="editPanel" onSubmit={saveMetadata}>
+                    <div className="editPanelHeading">
+                      <div>
+                        <h3>Redigera metadata</h3>
+                        <p>Originalfilen påverkas inte av dessa ändringar.</p>
+                      </div>
+                    </div>
+
+                    <div className="formGrid">
+                      <label className="field fieldWide">
+                        <span>Titel</span>
+                        <input
+                          type="text"
+                          value={editTitle}
+                          maxLength={200}
+                          required
+                          onChange={(event) => setEditTitle(event.target.value)}
+                        />
+                      </label>
+
+                      <label className="field">
+                        <span>Dokumentdatum</span>
+                        <input
+                          type="date"
+                          value={editDocumentDate}
+                          onChange={(event) =>
+                            setEditDocumentDate(event.target.value)
+                          }
+                        />
+                      </label>
+
+                      <label className="field">
+                        <span>Kategori</span>
+                        <select
+                          value={editCategoryId}
+                          onChange={(event) =>
+                            setEditCategoryId(event.target.value)
+                          }
+                        >
+                          <option value="">Ingen kategori</option>
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="field fieldWide">
+                        <span>Anteckning</span>
+                        <textarea
+                          value={editDescription}
+                          maxLength={4000}
+                          rows={4}
+                          onChange={(event) =>
+                            setEditDescription(event.target.value)
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    <div className="editActions">
+                      <button
+                        type="button"
+                        className="secondaryActionButton"
+                        onClick={cancelEditing}
+                        disabled={metadataSaving}
+                      >
+                        Avbryt
+                      </button>
+                      <button
+                        type="submit"
+                        className="primaryButton"
+                        disabled={metadataSaving}
+                      >
+                        {metadataSaving ? "Sparar…" : "Spara ändringar"}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {deleteConfirming && (
+                  <div className="deletePanel">
+                    <div>
+                      <strong>Ta bort dokumentet permanent?</strong>
+                      <p>
+                        Både originalfilen och all metadata för dokumentet tas
+                        bort från arkivet. Åtgärden kan inte ångras.
+                      </p>
+                    </div>
+                    <div className="deleteActions">
+                      <button
+                        type="button"
+                        className="secondaryActionButton"
+                        onClick={() => setDeleteConfirming(false)}
+                        disabled={deleting}
+                      >
+                        Avbryt
+                      </button>
+                      <button
+                        type="button"
+                        className="dangerConfirmButton"
+                        onClick={() => void deleteDocument()}
+                        disabled={deleting}
+                      >
+                        {deleting ? "Tar bort…" : "Ja, ta bort permanent"}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <dl className="detailGrid">
                   <div>
