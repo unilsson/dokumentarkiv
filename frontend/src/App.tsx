@@ -1073,7 +1073,7 @@ export default function App() {
                     type="button"
                     className="secondaryActionButton"
                     onClick={startEditing}
-                    disabled={metadataSaving || deleting}
+                    disabled={metadataSaving || deleting || paymentSaving}
                   >
                     Redigera metadata
                   </button>
@@ -1085,7 +1085,7 @@ export default function App() {
                       setIsEditing(false);
                       setDetailMessage("");
                     }}
-                    disabled={metadataSaving || deleting}
+                    disabled={metadataSaving || deleting || paymentSaving}
                   >
                     Ta bort
                   </button>
@@ -1103,7 +1103,7 @@ export default function App() {
                       <input
                         type="checkbox"
                         checked={selectedDocument.paid}
-                        disabled={paymentSaving}
+                        disabled={paymentSaving || metadataSaving || deleting}
                         onChange={(event) =>
                           void setPaymentStatus(event.target.checked)
                         }
