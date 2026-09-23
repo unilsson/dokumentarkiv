@@ -24,6 +24,8 @@ type DocumentItem = {
   mimeType: string;
   documentDate: string | null;
   description: string | null;
+  paid: boolean;
+  paidAt: string | null;
   sha256: string;
   createdAt: string;
   updatedAt: string;
@@ -180,6 +182,7 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [archiveCategoryId, setArchiveCategoryId] = useState("");
   const [archiveTagId, setArchiveTagId] = useState("");
+  const [archivePaymentStatus, setArchivePaymentStatus] = useState("");
   const [selectedDocument, setSelectedDocument] =
     useState<DocumentItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -190,6 +193,7 @@ export default function App() {
   const [editTags, setEditTags] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [metadataSaving, setMetadataSaving] = useState(false);
+  const [paymentSaving, setPaymentSaving] = useState(false);
   const [detailMessage, setDetailMessage] = useState("");
   const [deleteConfirming, setDeleteConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -242,7 +246,7 @@ export default function App() {
     }, 200);
 
     return () => window.clearTimeout(timer);
-  }, [search, archiveCategoryId, archiveTagId]);
+  }, [search, archiveCategoryId, archiveTagId, archivePaymentStatus]);
 
   async function loadTags() {
     try {
@@ -297,6 +301,10 @@ export default function App() {
 
     if (archiveTagId) {
       params.set("tagId", archiveTagId);
+    }
+
+    if (archivePaymentStatus) {
+      params.set("paymentStatus", archivePaymentStatus);
     }
 
     const query = params.toString();
@@ -437,6 +445,53 @@ export default function App() {
     }
   }
 
+  async function setPaymentStatus(paid: boolean) {
+    if (!selectedDocument || selectedDocument.category?.name !== "Räkningar") {
+      return;
+    }
+
+    setPaymentSaving(true);
+    setDetailMessage("");
+
+    try {
+      const response = await fetch(
+        `/api/documents/${selectedDocument.id}/payment`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ paid }),
+        },
+      );
+
+      const payload = (await response.json()) as
+        | { document: DocumentItem }
+        | ApiError;
+
+      if (!response.ok || !("document" in payload)) {
+        throw new Error(
+          "message" in payload && payload.message
+            ? payload.message
+            : "Betalstatus kunde inte sparas.",
+        );
+      }
+
+      setSelectedDocument(payload.document);
+      setDetailMessage(paid ? "Räkningen markerades som betald." : "Räkningen markerades som obetald.");
+      await loadDocuments();
+      await loadHomeDocuments();
+    } catch (error) {
+      setDetailMessage(
+        error instanceof Error
+          ? error.message
+          : "Betalstatus kunde inte sparas.",
+      );
+    } finally {
+      setPaymentSaving(false);
+    }
+  }
+
   async function deleteDocument() {
     if (!selectedDocument) {
       return;
@@ -490,6 +545,7 @@ export default function App() {
     setSearch("");
     setArchiveCategoryId("");
     setArchiveTagId("");
+    setArchivePaymentStatus("");
     setView("home");
     setSidebarOpen(false);
     void loadHomeDocuments();
@@ -499,6 +555,7 @@ export default function App() {
     setSearch("");
     setArchiveCategoryId("");
     setArchiveTagId("");
+    setArchivePaymentStatus("");
     setView("archive");
     setSidebarOpen(false);
   }
@@ -506,6 +563,7 @@ export default function App() {
   function showCategory(categoryId: number) {
     setSearch("");
     setArchiveTagId("");
+    setArchivePaymentStatus("");
     setArchiveCategoryId(String(categoryId));
     setView("archive");
     setSidebarOpen(false);
@@ -514,6 +572,7 @@ export default function App() {
   function showTag(tagId: number) {
     setSearch("");
     setArchiveCategoryId("");
+    setArchivePaymentStatus("");
     setArchiveTagId(String(tagId));
     setView("archive");
     setSidebarOpen(false);
@@ -788,6 +847,17 @@ export default function App() {
                               {document.category?.name ?? "Ingen kategori"}
                             </span>
                             <span>{formatDate(document.documentDate)}</span>
+                            {document.category?.name === "Räkningar" && (
+                              <span
+                                className={
+                                  document.paid
+                                    ? "paymentBadge paid"
+                                    : "paymentBadge unpaid"
+                                }
+                              >
+                                {document.paid ? "Betald" : "Obetald"}
+                              </span>
+                            )}
                           </div>
                           <span className="rowArrow" aria-hidden="true">
                             →
@@ -823,7 +893,13 @@ export default function App() {
               </span>
             </section>
 
-            <section className="filterBar">
+            <section
+              className={
+                activeCategory?.name === "Räkningar"
+                  ? "filterBar billFilters"
+                  : "filterBar"
+              }
+            >
               <label className="filterField searchField">
                 <span>Sök</span>
                 <input
@@ -840,6 +916,7 @@ export default function App() {
                   value={archiveCategoryId}
                   onChange={(event) => {
                     setArchiveTagId("");
+                    setArchivePaymentStatus("");
                     setArchiveCategoryId(event.target.value);
                   }}
                 >
@@ -858,6 +935,7 @@ export default function App() {
                   value={archiveTagId}
                   onChange={(event) => {
                     setArchiveCategoryId("");
+                    setArchivePaymentStatus("");
                     setArchiveTagId(event.target.value);
                   }}
                 >
@@ -869,6 +947,22 @@ export default function App() {
                   ))}
                 </select>
               </label>
+
+              {activeCategory?.name === "Räkningar" && (
+                <label className="filterField">
+                  <span>Betalstatus</span>
+                  <select
+                    value={archivePaymentStatus}
+                    onChange={(event) =>
+                      setArchivePaymentStatus(event.target.value)
+                    }
+                  >
+                    <option value="">Alla</option>
+                    <option value="unpaid">Obetalda</option>
+                    <option value="paid">Betalda</option>
+                  </select>
+                </label>
+              )}
             </section>
 
             {archiveError && (
@@ -906,6 +1000,17 @@ export default function App() {
                       <div className="documentMeta">
                         <span>{document.category?.name ?? "Ingen kategori"}</span>
                         <span>{formatDate(document.documentDate)}</span>
+                        {document.category?.name === "Räkningar" && (
+                          <span
+                            className={
+                              document.paid
+                                ? "paymentBadge paid"
+                                : "paymentBadge unpaid"
+                            }
+                          >
+                            {document.paid ? "Betald" : "Obetald"}
+                          </span>
+                        )}
                       </div>
 
                       <span className="rowArrow" aria-hidden="true">
@@ -968,7 +1073,7 @@ export default function App() {
                     type="button"
                     className="secondaryActionButton"
                     onClick={startEditing}
-                    disabled={metadataSaving || deleting}
+                    disabled={metadataSaving || deleting || paymentSaving}
                   >
                     Redigera metadata
                   </button>
@@ -980,11 +1085,40 @@ export default function App() {
                       setIsEditing(false);
                       setDetailMessage("");
                     }}
-                    disabled={metadataSaving || deleting}
+                    disabled={metadataSaving || deleting || paymentSaving}
                   >
                     Ta bort
                   </button>
                 </div>
+
+                {selectedDocument.category?.name === "Räkningar" && (
+                  <div
+                    className={
+                      selectedDocument.paid
+                        ? "billPaymentPanel paid"
+                        : "billPaymentPanel"
+                    }
+                  >
+                    <label className="billPaidToggle">
+                      <input
+                        type="checkbox"
+                        checked={selectedDocument.paid}
+                        disabled={paymentSaving || metadataSaving || deleting}
+                        onChange={(event) =>
+                          void setPaymentStatus(event.target.checked)
+                        }
+                      />
+                      <span>Betald</span>
+                    </label>
+                    <span className="billPaymentInfo">
+                      {paymentSaving
+                        ? "Sparar…"
+                        : selectedDocument.paidAt
+                          ? `Betald ${formatCreatedAt(selectedDocument.paidAt)}`
+                          : "Räkningen är inte betald."}
+                    </span>
+                  </div>
+                )}
 
                 {detailMessage && (
                   <div className="detailNotice" role="status">

@@ -7,6 +7,7 @@ const defaultCategories = [
   "Hus",
   "Försäkringar",
   "Kvitton",
+  "Räkningar",
   "Avtal",
   "Fordon",
   "Förening",
@@ -41,6 +42,7 @@ export function getDatabase(): DatabaseSync {
       document_date TEXT,
       category_id INTEGER,
       description TEXT,
+      paid_at TEXT,
       sha256 TEXT NOT NULL,
       ocr_text TEXT,
       ocr_status TEXT NOT NULL DEFAULT 'pending',
@@ -88,6 +90,10 @@ export function getDatabase(): DatabaseSync {
     .all() as Array<{ name: string }>;
   const columnNames = new Set(documentColumns.map((column) => column.name));
 
+  if (!columnNames.has("paid_at")) {
+    database.exec("ALTER TABLE documents ADD COLUMN paid_at TEXT;");
+  }
+
   if (!columnNames.has("ocr_text")) {
     database.exec("ALTER TABLE documents ADD COLUMN ocr_text TEXT;");
   }
@@ -105,6 +111,10 @@ export function getDatabase(): DatabaseSync {
   if (!columnNames.has("ocr_updated_at")) {
     database.exec("ALTER TABLE documents ADD COLUMN ocr_updated_at TEXT;");
   }
+
+  database.exec(
+    "CREATE INDEX IF NOT EXISTS idx_documents_paid_at ON documents(paid_at);",
+  );
 
   database.exec(
     `UPDATE documents

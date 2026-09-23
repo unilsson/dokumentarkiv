@@ -134,6 +134,18 @@ pdftoppm -v
 
 Standardinställningen använder svenska och engelska (`swe+eng`) och behandlar högst 30 PDF-sidor per dokument. Detta kan ändras med OCR-miljövariablerna i `.env.example`.
 
+Sprint 9 lägger till räkningar och betalstatus:
+
+- ny standardkategori `Räkningar`
+- nya räkningar är obetalda som standard
+- räkningar kan markeras `Betald` direkt på dokumentdetaljen
+- betalningstid lagras internt som `paid_at`
+- avmarkering gör räkningen obetald igen
+- betalstatus visas i dokumentlistan
+- kategorin Räkningar kan filtreras på Alla, Obetalda och Betalda
+- om ett dokument flyttas från Räkningar nollställs betalstatusen automatiskt
+- befintliga databaser migreras automatiskt med den nya kolumnen
+
 ## API
 
 ```text
@@ -146,6 +158,7 @@ GET  /api/documents/:id/content
 GET  /api/documents/:id/download
 POST /api/documents
 PATCH /api/documents/:id
+PATCH /api/documents/:id/payment
 DELETE /api/documents/:id
 ```
 
@@ -256,4 +269,4 @@ Det gör backupprincipen enkel:
 
 ## Nästa steg
 
-Efter OCR-sprinten är ett naturligt nästa steg Docker-paketering med Tesseract/Poppler inkluderat, så samma OCR-miljö kan köras reproducerbart i hemmalabbet.
+Efter räkningarna är ett naturligt nästa steg att antingen bygga vidare med förfallodatum/belopp och en räkningsöversikt på Hem, eller gå vidare med Docker-paketering för reproducerbar drift i hemmalabbet.
