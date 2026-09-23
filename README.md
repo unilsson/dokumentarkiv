@@ -269,4 +269,4 @@ Det gör backupprincipen enkel:
 
 ## Nästa steg
 
-Efter räkningarna är ett naturligt nästa steg att antingen bygga vidare med förfallodatum/belopp och en räkningöversikt på Hem, eller gå vidare med Docker-paketering för reproducerbar drift i hemmalabbet.
+Efter räkningarna är ett naturligt nästa steg att antingen bygga vidare med förfallodatum/belopp och en räkningsöversikt på Hem, eller gå vidare med Docker-paketering för reproducerbar drift i hemmalabbet.
