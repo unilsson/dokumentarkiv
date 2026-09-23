@@ -41,6 +41,7 @@ type DocumentRecord = {
   mime_type: string;
   document_date: string | null;
   description: string | null;
+  paid_at: string | null;
   sha256: string;
   created_at: string;
   updated_at: string;
@@ -161,6 +162,8 @@ function documentJson(document: DocumentRecord) {
     mimeType: document.mime_type,
     documentDate: document.document_date,
     description: document.description,
+    paid: document.paid_at !== null,
+    paidAt: document.paid_at,
     sha256: document.sha256,
     createdAt: document.created_at,
     updatedAt: document.updated_at,
@@ -234,6 +237,7 @@ const documentSelect = `
     d.mime_type,
     d.document_date,
     d.description,
+    d.paid_at,
     d.sha256,
     d.created_at,
     d.updated_at,
@@ -247,6 +251,7 @@ documentsRouter.get("/", (req, res) => {
   const query = textField(req.query.q);
   const categoryIdText = textField(req.query.categoryId);
   const tagIdText = textField(req.query.tagId);
+  const paymentStatus = textField(req.query.paymentStatus);
   const conditions: string[] = [];
   const parameters: Array<string | number> = [];
 
@@ -283,6 +288,22 @@ documentsRouter.get("/", (req, res) => {
 
     conditions.push("d.category_id = ?");
     parameters.push(categoryId);
+  }
+
+  if (paymentStatus) {
+    if (paymentStatus !== "paid" && paymentStatus !== "unpaid") {
+      res.status(400).json({
+        error: "invalid_payment_status",
+        message: "Ogiltigt betalstatusfilter.",
+      });
+      return;
+    }
+
+    conditions.push(
+      paymentStatus === "paid"
+        ? "(c.name = 'Räkningar' AND d.paid_at IS NOT NULL)"
+        : "(c.name = 'Räkningar' AND d.paid_at IS NULL)",
+    );
   }
 
   if (tagIdText) {
@@ -468,6 +489,65 @@ documentsRouter.get("/:id", (req, res) => {
   res.json({ document: documentJson(document) });
 });
 
+documentsRouter.patch("/:id/payment", (req, res) => {
+  const id = documentId(req.params.id);
+
+  if (!id) {
+    res.status(400).json({
+      error: "invalid_document_id",
+      message: "Ogiltigt dokument-id.",
+    });
+    return;
+  }
+
+  if (typeof req.body.paid !== "boolean") {
+    res.status(400).json({
+      error: "invalid_paid_status",
+      message: "Betalstatus måste vara true eller false.",
+    });
+    return;
+  }
+
+  const database = getDatabase();
+  const existing = database
+    .prepare(`${documentSelect} WHERE d.id = ?`)
+    .get(id) as DocumentRecord | undefined;
+
+  if (!existing) {
+    res.status(404).json({
+      error: "document_not_found",
+      message: "Dokumentet finns inte.",
+    });
+    return;
+  }
+
+  if (existing.category_name !== "Räkningar") {
+    res.status(400).json({
+      error: "not_a_bill",
+      message: "Betalstatus kan bara ändras för dokument i kategorin Räkningar.",
+    });
+    return;
+  }
+
+  database
+    .prepare(
+      `UPDATE documents
+       SET paid_at = CASE
+         WHEN ? = 1 THEN COALESCE(paid_at, CURRENT_TIMESTAMP)
+         ELSE NULL
+       END,
+       updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+    )
+    .run(req.body.paid ? 1 : 0, id);
+
+  const document = database
+    .prepare(`${documentSelect} WHERE d.id = ?`)
+    .get(id) as DocumentRecord;
+
+  res.json({ document: documentJson(document) });
+});
+
 documentsRouter.patch("/:id", (req, res) => {
   const id = documentId(req.params.id);
 
@@ -530,6 +610,7 @@ documentsRouter.patch("/:id", (req, res) => {
   }
 
   let categoryId: number | null = null;
+  let categoryName: string | null = null;
 
   if (categoryValue !== null && categoryValue !== undefined && categoryValue !== "") {
     categoryId =
@@ -546,8 +627,8 @@ documentsRouter.patch("/:id", (req, res) => {
     }
 
     const category = getDatabase()
-      .prepare("SELECT id FROM categories WHERE id = ?")
-      .get(categoryId);
+      .prepare("SELECT id, name FROM categories WHERE id = ?")
+      .get(categoryId) as { id: number; name: string } | undefined;
 
     if (!category) {
       res.status(400).json({
@@ -556,6 +637,8 @@ documentsRouter.patch("/:id", (req, res) => {
       });
       return;
     }
+
+    categoryName = category.name;
   }
 
   const database = getDatabase();
@@ -569,6 +652,7 @@ documentsRouter.patch("/:id", (req, res) => {
              document_date = ?,
              category_id = ?,
              description = ?,
+             paid_at = CASE WHEN ? = 1 THEN paid_at ELSE NULL END,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
       )
@@ -577,6 +661,7 @@ documentsRouter.patch("/:id", (req, res) => {
         documentDate || null,
         categoryId,
         description || null,
+        categoryName === "Räkningar" ? 1 : 0,
         id,
       );
 
