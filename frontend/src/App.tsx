@@ -24,6 +24,8 @@ type DocumentItem = {
   mimeType: string;
   documentDate: string | null;
   description: string | null;
+  paid: boolean;
+  paidAt: string | null;
   sha256: string;
   createdAt: string;
   updatedAt: string;
@@ -180,6 +182,7 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [archiveCategoryId, setArchiveCategoryId] = useState("");
   const [archiveTagId, setArchiveTagId] = useState("");
+  const [archivePaymentStatus, setArchivePaymentStatus] = useState("");
   const [selectedDocument, setSelectedDocument] =
     useState<DocumentItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -190,6 +193,7 @@ export default function App() {
   const [editTags, setEditTags] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [metadataSaving, setMetadataSaving] = useState(false);
+  const [paymentSaving, setPaymentSaving] = useState(false);
   const [detailMessage, setDetailMessage] = useState("");
   const [deleteConfirming, setDeleteConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -242,7 +246,7 @@ export default function App() {
     }, 200);
 
     return () => window.clearTimeout(timer);
-  }, [search, archiveCategoryId, archiveTagId]);
+  }, [search, archiveCategoryId, archiveTagId, archivePaymentStatus]);
 
   async function loadTags() {
     try {
@@ -297,6 +301,10 @@ export default function App() {
 
     if (archiveTagId) {
       params.set("tagId", archiveTagId);
+    }
+
+    if (archivePaymentStatus) {
+      params.set("paymentStatus", archivePaymentStatus);
     }
 
     const query = params.toString();
@@ -490,6 +498,7 @@ export default function App() {
     setSearch("");
     setArchiveCategoryId("");
     setArchiveTagId("");
+    setArchivePaymentStatus("");
     setView("home");
     setSidebarOpen(false);
     void loadHomeDocuments();
@@ -499,6 +508,7 @@ export default function App() {
     setSearch("");
     setArchiveCategoryId("");
     setArchiveTagId("");
+    setArchivePaymentStatus("");
     setView("archive");
     setSidebarOpen(false);
   }
@@ -506,6 +516,7 @@ export default function App() {
   function showCategory(categoryId: number) {
     setSearch("");
     setArchiveTagId("");
+    setArchivePaymentStatus("");
     setArchiveCategoryId(String(categoryId));
     setView("archive");
     setSidebarOpen(false);
@@ -514,6 +525,7 @@ export default function App() {
   function showTag(tagId: number) {
     setSearch("");
     setArchiveCategoryId("");
+    setArchivePaymentStatus("");
     setArchiveTagId(String(tagId));
     setView("archive");
     setSidebarOpen(false);
